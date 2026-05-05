@@ -138,9 +138,6 @@ func GenerateReceipt(bill *models.Bill) string {
 	receipt.WriteString(ALIGN_CENTER)
 	receipt.WriteString("Thank You! Visit Again")
 	receipt.WriteString("\n")
-	receipt.WriteString("GST: Not Applicable")
-	receipt.WriteString("\n")
-	receipt.WriteString("\n")
 	receipt.WriteString("\n")
 
 	// Cut paper

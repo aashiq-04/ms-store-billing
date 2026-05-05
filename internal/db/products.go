@@ -352,27 +352,38 @@ func scanProducts(rows *sql.Rows) ([]models.Product, error) {
 // parseTime converts SQLite datetime string to time.Time
 // SQLite format: "2006-01-02 15:04:05"
 func parseTime(timeStr string) time.Time {
-    if timeStr == "" {
-        return time.Time{}
-    }
+	if timeStr == "" {
+		return time.Time{}
+	}
 
-    // Try multiple formats (SQLite can return different formats)
-    formats := []string{
-        "2006-01-02 15:04:05",
-        "2006-01-02T15:04:05Z",
-        "2006-01-02T15:04:05",
-        time.RFC3339,
-    }
+	localLoc := time.Now().Location()
 
-    for _, format := range formats {
-        t, err := time.Parse(format, timeStr)
-        if err == nil {
-            return t
-        }
-    }
+	// Parse local-without-timezone values as local time.
+	localFormats := []string{
+		"2006-01-02 15:04:05",
+		"2006-01-02T15:04:05",
+	}
+	for _, format := range localFormats {
+		t, err := time.ParseInLocation(format, timeStr, localLoc)
+		if err == nil {
+			return t
+		}
+	}
 
-    // If all parsing fails, return zero time
-    return time.Time{}
+	// Parse timezone-aware values and convert to local time for display.
+	zonedFormats := []string{
+		"2006-01-02T15:04:05Z",
+		time.RFC3339,
+	}
+	for _, format := range zonedFormats {
+		t, err := time.Parse(format, timeStr)
+		if err == nil {
+			return t.In(localLoc)
+		}
+	}
+
+	// If all parsing fails, return zero time
+	return time.Time{}
 }
 
 // GetProductCount returns total number of products

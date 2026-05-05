@@ -14,6 +14,7 @@ import (
 )
 
 var DB *sql.DB
+var currentDBPath string
 
 // writeMutex serializes all write operations to prevent SQLite transaction conflicts
 // SQLite doesn't handle concurrent transactions well, even with WAL mode
@@ -58,6 +59,7 @@ func Initialize(dbPath string, migrationsBaseDir string) error {
 	}
 
 	log.Println("✓ Database connection established")
+	currentDBPath = dbPath
 
 	// Run migrations from the executable directory.
 	// This keeps migration lookup stable even if DB is stored elsewhere.
@@ -67,17 +69,70 @@ func Initialize(dbPath string, migrationsBaseDir string) error {
 	return nil
 }
 
+// CurrentDBPath returns active SQLite file path.
+func CurrentDBPath() string {
+	return currentDBPath
+}
+
 // runMigrations executes SQL migration files
 func runMigrations(baseDir string) error {
+	// Track applied migrations so each file runs only once.
+	_, err := DB.Exec(`
+		CREATE TABLE IF NOT EXISTS schema_migrations (
+			name TEXT PRIMARY KEY,
+			applied_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to initialize schema_migrations: %w", err)
+	}
+
 	migration := []string{
 		"migrations/001_init_schema.sql",
-		"migrations/002_seed_data.sql",
 		"migrations/003_add_tamil.sql",
 		"migrations/004_add_bill_cleanup.sql",
 		"migrations/005_add_bill_items_tamil_name.sql",
 	}
 
 	for _, migrationFile := range migration {
+		var alreadyApplied int
+		if err := DB.QueryRow("SELECT COUNT(1) FROM schema_migrations WHERE name = ?", migrationFile).Scan(&alreadyApplied); err != nil {
+			return fmt.Errorf("failed to check migration state for %s: %w", migrationFile, err)
+		}
+		if alreadyApplied > 0 {
+			log.Printf("✓ Migration already applied: %s", migrationFile)
+			continue
+		}
+
+		// If schema already contains these columns, mark migration as applied
+		// without executing it again.
+		if migrationFile == "migrations/003_add_tamil.sql" {
+			exists, checkErr := columnExists("products", "tamil_name")
+			if checkErr != nil {
+				return fmt.Errorf("failed to check tamil_name column: %w", checkErr)
+			}
+			if exists {
+				if _, markErr := DB.Exec("INSERT OR IGNORE INTO schema_migrations(name) VALUES (?)", migrationFile); markErr != nil {
+					return fmt.Errorf("failed to mark migration %s as applied: %w", migrationFile, markErr)
+				}
+				log.Printf("✓ Migration already reflected in schema: %s", migrationFile)
+				continue
+			}
+		}
+		if migrationFile == "migrations/005_add_bill_items_tamil_name.sql" {
+			exists, checkErr := columnExists("bill_items", "tamil_name")
+			if checkErr != nil {
+				return fmt.Errorf("failed to check bill_items.tamil_name column: %w", checkErr)
+			}
+			if exists {
+				if _, markErr := DB.Exec("INSERT OR IGNORE INTO schema_migrations(name) VALUES (?)", migrationFile); markErr != nil {
+					return fmt.Errorf("failed to mark migration %s as applied: %w", migrationFile, markErr)
+				}
+				log.Printf("✓ Migration already reflected in schema: %s", migrationFile)
+				continue
+			}
+		}
+
 		migrationPath := filepath.Join(baseDir, migrationFile)
 
 		//Check if file exists
@@ -130,9 +185,55 @@ func runMigrations(baseDir string) error {
 			return fmt.Errorf("failed to execute %s: %w", migrationFile, execErr)
 		}
 
+		// Mark as applied with retry for transient SQLite locks.
+		var markErr error
+		const maxMarkRetries = 5
+		for attempt := 1; attempt <= maxMarkRetries; attempt++ {
+			_, markErr = DB.Exec("INSERT OR IGNORE INTO schema_migrations(name) VALUES (?)", migrationFile)
+			if markErr == nil {
+				break
+			}
+			if attempt < maxMarkRetries && isSQLiteBusy(markErr) {
+				backoff := time.Duration(attempt*500) * time.Millisecond
+				log.Printf("⚠ SQLite is locked while marking migration, retrying %s in %s (attempt %d/%d)", migrationFile, backoff, attempt, maxMarkRetries)
+				time.Sleep(backoff)
+				continue
+			}
+			break
+		}
+
+		if markErr != nil {
+			return fmt.Errorf("failed to mark migration %s as applied: %w", migrationFile, markErr)
+		}
+
 		log.Printf("✓ Migration applied: %s", migrationFile)
 	}
 	return nil
+}
+
+func columnExists(tableName, columnName string) (bool, error) {
+	rows, err := DB.Query(fmt.Sprintf("PRAGMA table_info(%s)", tableName))
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	// PRAGMA table_info columns: cid, name, type, notnull, dflt_value, pk
+	for rows.Next() {
+		var cid int
+		var name string
+		var colType string
+		var notNull int
+		var defaultValue sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &colType, &notNull, &defaultValue, &pk); err != nil {
+			return false, err
+		}
+		if strings.EqualFold(name, columnName) {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }
 
 func isSQLiteBusy(err error) bool {

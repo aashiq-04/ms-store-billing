@@ -1,25 +1,27 @@
 package main
 
 import (
-    "embed"
-    "fmt"
-    "io/fs"
-    "log"
-    "net/http"
-    "os"
-    "os/exec"
-    "path/filepath"
-    "runtime"
-    "strings"
-    "io"
-    "syscall"
-    "time"
+	"context"
+	"embed"
+	"fmt"
+	"io"
+	"io/fs"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"syscall"
+	"time"
 
     "ms-store-billing/internal/db"
     "ms-store-billing/internal/handlers"
 )
 
 const ServerPort = "8080"
+var appServer *http.Server
 
 //go:embed build/*
 var frontendFS embed.FS
@@ -37,12 +39,18 @@ func main() {
     }
     exeDir := filepath.Dir(exePath)
 
-    // Database will be in same folder as executable
-    dbPath := filepath.Join(exeDir, "msstore.db")
+    // Store database in a stable per-user location so shortcuts/copies of
+    // the EXE always use the same data file.
+    dataRoot, err := os.UserConfigDir()
+    if err != nil {
+        log.Fatal("Failed to get user config dir:", err)
+    }
+    dataDir := filepath.Join(dataRoot, "MSStoreBilling")
+    dbPath := filepath.Join(dataDir, "msstore.db")
     log.Printf("Database: %s", dbPath)
 
     // Initialize database
-    if err := db.Initialize(dbPath); err != nil {
+    if err := db.Initialize(dbPath, exeDir); err != nil {
         log.Fatal("Database initialization failed:", err)
     }
     defer db.Close()
@@ -74,9 +82,10 @@ func main() {
 
 	// Start HTTP server in background so we can wait for it to be reachable
 	// before trying to open the browser (prevents "connection refused" pages).
+	appServer = &http.Server{Addr: serverAddr}
 	serverErr := make(chan error, 1)
 	go func() {
-		serverErr <- http.ListenAndServe(serverAddr, nil)
+		serverErr <- appServer.ListenAndServe()
 	}()
 
 	client := &http.Client{Timeout: 500 * time.Millisecond}
@@ -109,6 +118,8 @@ func setupRoutes() {
     http.HandleFunc("/api/print", handlers.PrintHandler)
     http.HandleFunc("/api/printers", handlers.PrintersHandler)
     http.HandleFunc("/api/preview/", handlers.PreviewHandler)
+    http.HandleFunc("/api/shutdown", shutdownHandler)
+    http.HandleFunc("/api/debug/db-path", dbPathHandler)
 
     // Serve embedded React frontend
     buildFS, err := fs.Sub(frontendFS, "build")
@@ -166,6 +177,35 @@ func setupRoutes() {
             log.Printf("Error copying index.html content: %v", err)
         }
     })
+}
+
+func dbPathHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"db_path":%q}`, db.CurrentDBPath())))
+}
+
+func shutdownHandler(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(`{"status":"shutting_down"}`))
+
+	// Gracefully stop the server shortly after responding to caller.
+	go func() {
+		time.Sleep(200 * time.Millisecond)
+		if appServer != nil {
+			_ = appServer.Shutdown(context.Background())
+		}
+	}()
 }
 
 // healthHandler returns API health status

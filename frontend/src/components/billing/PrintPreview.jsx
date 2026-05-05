@@ -70,7 +70,7 @@ export default function PrintPreview({ bill, onClose }) {
     receipt.push('='.repeat(width));
     receipt.push(centerText('MS STORE', width));
     receipt.push(centerText('Chennai, Tamil Nadu', width));
-    receipt.push(centerText('Tel: 044-XXXXXXXX', width));
+    receipt.push(centerText('Phone: +91 8220220731', width));
     receipt.push('='.repeat(width));
     receipt.push('');
 
@@ -104,7 +104,7 @@ export default function PrintPreview({ bill, onClose }) {
 
     // Footer
     receipt.push(centerText('Thank You! Visit Again', width));
-    receipt.push(centerText('GST: Not Applicable', width));
+    // receipt.push(centerText('GST: Not Applicable', width));
     receipt.push('');
     receipt.push('');
 
@@ -205,17 +205,6 @@ export default function PrintPreview({ bill, onClose }) {
                   Close
                 </Button>
               </div>
-
-              {/* Tips */}
-              <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-200">
-                <p className="text-sm text-amber-800 font-medium mb-2">💡 Tips for Real Printer</p>
-                <ul className="text-xs text-amber-700 space-y-1">
-                  <li>• Recommended: Munbyn, Rongta, or similar ESC/POS printers</li>
-                  <li>• Connect via USB (faster than Bluetooth)</li>
-                  <li>• Install Windows drivers before connecting</li>
-                  <li>• Set as default printer in Windows settings</li>
-                </ul>
-              </div>
             </>
           )}
         </div>
@@ -223,3 +212,4 @@ export default function PrintPreview({ bill, onClose }) {
     </div>
   );
 }
+

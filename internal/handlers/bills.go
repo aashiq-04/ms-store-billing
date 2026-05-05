@@ -147,7 +147,7 @@ func BillHistoryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // BillSearchHandler searches bills
-// GET /api/bills/search?q=MS-0042
+// GET /api/bills/search?q=MS-202605-0042
 func BillSearchHandler(w http.ResponseWriter, r *http.Request) {
     enableCORS(w)
 
@@ -168,7 +168,7 @@ func BillSearchHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     // If user searches using digits only (e.g. "42" / "0042"),
-    // treat it as the numeric part of bill number and search as "MS-0042".
+    // treat it as the sequence part of monthly bill number and search by suffix.
     normalizedQuery := searchTerm
     isDigitsOnly := true
     for _, c := range searchTerm {
@@ -179,7 +179,7 @@ func BillSearchHandler(w http.ResponseWriter, r *http.Request) {
     }
     if isDigitsOnly {
         if id, err := strconv.ParseInt(searchTerm, 10, 64); err == nil {
-            normalizedQuery = fmt.Sprintf("MS-%04d", id)
+            normalizedQuery = fmt.Sprintf("-%04d", id)
         }
     }
 
