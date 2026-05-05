@@ -1,0 +1,19 @@
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Build outputs
+build/
+*.exe
+
+# Local databases and WAL files
+*.db
+*.db-shm
+*.db-wal
+
+# Dependency caches
+**/node_modules/
+
+# Logs
+*.log
