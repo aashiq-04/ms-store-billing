@@ -13,6 +13,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   const [quantity, setQuantity] = useState('1');
   const [unit, setUnit] = useState('piece');
   const [price, setPrice] = useState('');
+  const [selectedTamilName, setSelectedTamilName] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all'); // ← ADD
   const [allProducts, setAllProducts] = useState([]);
   const { showSuccess, showError } = useToast();
@@ -109,6 +110,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
     
     // Set values
     setItemName(product.name);
+    setSelectedTamilName(product.tamil_name || '');
     setPrice(product.price.toString());
     setUnit(product.unit);
     
@@ -156,6 +158,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
     // Add item
     const newItem = {
       item_name: itemName,
+      tamil_name: selectedTamilName,
       quantity: qty,
       unit: unit,
       unit_price: unitPrice,
@@ -168,6 +171,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
     setItemName('');
     setQuantity('1');
     setPrice('');
+    setSelectedTamilName('');
     setUnit('piece');
     setShowDropdown(false);
     setSearchResults([]); // Clear search results
@@ -194,6 +198,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
       setItemName('');
       setQuantity('1');
       setPrice('');
+      setSelectedTamilName('');
       setUnit('piece');
       setSearchResults([]); // Clear search results
       itemNameRef.current?.focus();
@@ -213,6 +218,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
       // Remove line_total from items before sending to backend
       const itemsToSend = billItems.map(item => ({
         item_name: item.item_name,
+        tamil_name: item.tamil_name || '',
         quantity: item.quantity,
         unit: item.unit,
         unit_price: item.unit_price,
@@ -235,6 +241,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
       setItemName('');
       setQuantity('1');
       setPrice('');
+      setSelectedTamilName('');
       setUnit('piece');
       setSearchResults([]); // Clear search results
       itemNameRef.current?.focus();
@@ -257,6 +264,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
       setItemName('');
       setQuantity('1');
       setPrice('');
+      setSelectedTamilName('');
       setShowDropdown(false);
       setSearchResults([]); // Clear search results
       itemNameRef.current?.focus();
@@ -520,6 +528,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                     setItemName('');
                     setQuantity('1');
                     setPrice('');
+                    setSelectedTamilName('');
                     setSearchResults([]); // Clear search results
                     itemNameRef.current?.focus();
                   }}>
@@ -555,7 +564,12 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                           className="p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary-300 transition-all shadow-sm hover:shadow-md"
                         >
                           <div className="flex justify-between items-start mb-2">
-                            <div className="font-semibold text-gray-900 flex-1">{item.item_name}</div>
+                            <div className="flex-1">
+                              <div className="font-semibold text-gray-900">{item.item_name}</div>
+                              {item.tamil_name && (
+                                <div className="text-sm text-gray-600 mt-1">{item.tamil_name}</div>
+                              )}
+                            </div>
                             <div className="text-lg font-bold text-primary-700">
                               ₹{item.line_total.toFixed(2)}
                             </div>

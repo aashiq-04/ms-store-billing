@@ -10,7 +10,7 @@ import (
 // Bill represents a customer transaction
 type Bill struct {
     ID         int64      `json:"id"`
-    BillNumber string     `json:"bill_number"` // "MS-0001", "MS-0002"
+    BillNumber string     `json:"bill_number"` // "MS-202605-0001"
     ItemCount  int        `json:"item_count"`  // Number of line items
     Subtotal   float64    `json:"subtotal"`    // Exact sum (with decimals)
     Total      float64    `json:"total"`       // CEIL(subtotal) - what customer pays
@@ -23,6 +23,7 @@ type BillItem struct {
     ID        int64   `json:"id"`
     BillID    int64   `json:"bill_id"`
     ItemName  string  `json:"item_name"`  // Product name at time of billing
+	TamilName string  `json:"tamil_name"` // Tamil product name at time of billing
     Quantity  float64 `json:"quantity"`   // 1, 0.25, 2.5, etc.
     Unit      string  `json:"unit"`       // "packet", "kg", "piece"
     UnitPrice float64 `json:"unit_price"` // Price per unit
@@ -37,6 +38,7 @@ type BillCreateRequest struct {
 // BillItemInput represents item data when creating a bill
 type BillItemInput struct {
     ItemName  string  `json:"item_name"`
+	TamilName string  `json:"tamil_name"`
     Quantity  float64 `json:"quantity"`
     Unit      string  `json:"unit"`
     UnitPrice float64 `json:"unit_price"`
@@ -81,9 +83,10 @@ func (b *BillCreateRequest) CalculateTotals() (subtotal float64, total float64) 
     return subtotal, total
 }
 
-// GenerateBillNumber creates bill number from ID (MS-0001, MS-0002, etc.)
-func GenerateBillNumber(id int64) string {
-    return fmt.Sprintf("MS-%04d", id)
+// GenerateMonthlyBillNumber creates a monthly bill number (MS-YYYYMM-0001).
+// monthKey must be in YYYYMM format.
+func GenerateMonthlyBillNumber(monthKey string, sequence int64) string {
+    return fmt.Sprintf("MS-%s-%04d", monthKey, sequence)
 }
 
 // Custom errors for bill validation

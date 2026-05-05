@@ -19,8 +19,8 @@ var DB *sql.DB
 // SQLite doesn't handle concurrent transactions well, even with WAL mode
 var writeMutex sync.Mutex
 
-// Initialize opej SQLite database and runs migrations
-func Initialize(dbPath string) error {
+// Initialize opens SQLite database and runs migrations.
+func Initialize(dbPath string, migrationsBaseDir string) error {
 	var err error
 	// Ensure directory exists
 	dir := filepath.Dir(dbPath)
@@ -59,10 +59,9 @@ func Initialize(dbPath string) error {
 
 	log.Println("✓ Database connection established")
 
-	// Run migrations
-	// Resolve migration paths relative to the executable/database directory
-	// so Desktop shortcuts (different working directory) don't break startup.
-	if err := runMigrations(dir); err != nil {
+	// Run migrations from the executable directory.
+	// This keeps migration lookup stable even if DB is stored elsewhere.
+	if err := runMigrations(migrationsBaseDir); err != nil {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 	return nil
@@ -74,6 +73,8 @@ func runMigrations(baseDir string) error {
 		"migrations/001_init_schema.sql",
 		"migrations/002_seed_data.sql",
 		"migrations/003_add_tamil.sql",
+		"migrations/004_add_bill_cleanup.sql",
+		"migrations/005_add_bill_items_tamil_name.sql",
 	}
 
 	for _, migrationFile := range migration {
@@ -102,6 +103,12 @@ func runMigrations(baseDir string) error {
 
 			// If it's the tamil migration and column already exists, that's OK.
 			if migrationFile == "migrations/003_add_tamil.sql" &&
+				strings.Contains(execErr.Error(), "duplicate column") {
+				log.Printf("⚠ Migration %s: column already exists (skipping)", migrationFile)
+				execErr = nil
+				break
+			}
+			if migrationFile == "migrations/005_add_bill_items_tamil_name.sql" &&
 				strings.Contains(execErr.Error(), "duplicate column") {
 				log.Printf("⚠ Migration %s: column already exists (skipping)", migrationFile)
 				execErr = nil

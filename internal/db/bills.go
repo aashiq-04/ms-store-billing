@@ -70,8 +70,12 @@ func CreateBill(req *models.BillCreateRequest) (*models.Bill, error) {
 		return nil, fmt.Errorf("failed to get bill ID: %w", err)
 	}
 
-	// Generate proper bill number
-	billNumber := models.GenerateBillNumber(billID)
+	// Generate monthly bill number based on bill creation month.
+	monthKey, monthlySequence, err := getMonthlyBillNumberParts(tx, billID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate monthly bill number: %w", err)
+	}
+	billNumber := models.GenerateMonthlyBillNumber(monthKey, monthlySequence)
 
 	// Update bill with proper bill number
 	updateQuery := `UPDATE bills SET bill_number = ? WHERE id = ?`
@@ -82,8 +86,8 @@ func CreateBill(req *models.BillCreateRequest) (*models.Bill, error) {
 
 	// Insert bill items
 	itemQuery := `
-        INSERT INTO bill_items (bill_id, item_name, quantity, unit, unit_price, line_total)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO bill_items (bill_id, item_name, tamil_name, quantity, unit, unit_price, line_total)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     `
 
 	// Collect unique product names to update later (outside transaction)
@@ -92,7 +96,7 @@ func CreateBill(req *models.BillCreateRequest) (*models.Bill, error) {
 	for _, item := range req.Items {
 		lineTotal := item.Quantity * item.UnitPrice
 
-		_, err := tx.Exec(itemQuery, billID, item.ItemName, item.Quantity, item.Unit, item.UnitPrice, lineTotal)
+		_, err := tx.Exec(itemQuery, billID, item.ItemName, item.TamilName, item.Quantity, item.Unit, item.UnitPrice, lineTotal)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create bill item: %w", err)
 		}
@@ -115,6 +119,35 @@ func CreateBill(req *models.BillCreateRequest) (*models.Bill, error) {
 
 	// Retrieve and return the created bill
 	return GetBillByID(billID)
+}
+
+// getMonthlyBillNumberParts returns YYYYMM month key and sequence for a bill.
+// Sequence is reset every month in local time.
+func getMonthlyBillNumberParts(tx *sql.Tx, billID int64) (string, int64, error) {
+	query := `
+		SELECT
+			strftime('%Y%m', b.created_at, 'localtime') AS month_key,
+			(
+				SELECT COUNT(*)
+				FROM bills b2
+				WHERE strftime('%Y%m', b2.created_at, 'localtime') = strftime('%Y%m', b.created_at, 'localtime')
+				  AND b2.id <= b.id
+			) AS monthly_sequence
+		FROM bills b
+		WHERE b.id = ?
+	`
+
+	var monthKey string
+	var monthlySequence int64
+	if err := tx.QueryRow(query, billID).Scan(&monthKey, &monthlySequence); err != nil {
+		return "", 0, err
+	}
+
+	if monthKey == "" || monthlySequence <= 0 {
+		return "", 0, fmt.Errorf("invalid monthly bill number parts")
+	}
+
+	return monthKey, monthlySequence, nil
 }
 
 // GetBillByID retrieves a bill with all its items
@@ -149,7 +182,7 @@ func GetBillByID(id int64) (*models.Bill, error) {
 
 	// Get bill items
 	itemsQuery := `
-        SELECT id, bill_id, item_name, quantity, unit, unit_price, line_total
+        SELECT id, bill_id, item_name, COALESCE(tamil_name, ''), quantity, unit, unit_price, line_total
         FROM bill_items
         WHERE bill_id = ?
         ORDER BY id ASC
@@ -168,6 +201,7 @@ func GetBillByID(id int64) (*models.Bill, error) {
 			&item.ID,
 			&item.BillID,
 			&item.ItemName,
+			&item.TamilName,
 			&item.Quantity,
 			&item.Unit,
 			&item.UnitPrice,
@@ -499,12 +533,13 @@ func SearchBills(searchTerm string, limit int) ([]models.Bill, error) {
         SELECT id, bill_number, item_count, subtotal, total, created_at
         FROM bills
         WHERE bill_number LIKE ? || '%'
+           OR bill_number LIKE '%' || ? || '%'
            OR DATE(created_at) = DATE(?)
         ORDER BY created_at DESC
         LIMIT ?
     `
 
-	rows, err := DB.Query(query, searchTerm, searchTerm, limit)
+	rows, err := DB.Query(query, searchTerm, searchTerm, searchTerm, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search bills: %w", err)
 	}
