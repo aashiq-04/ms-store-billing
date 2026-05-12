@@ -252,7 +252,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
     }
   };
 
-  // Handle keyboard shortcuts
+  
   const handleKeyDown = (e) => {
     // F9 - Save bill
     if (e.key === 'F9') {
