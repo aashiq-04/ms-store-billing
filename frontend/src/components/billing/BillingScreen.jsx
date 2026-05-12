@@ -389,19 +389,19 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-3 sm:p-5 lg:p-7" onKeyDown={handleKeyDown}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 px-3 py-2 sm:px-4 sm:py-2 lg:px-5 lg:py-3" onKeyDown={handleKeyDown}>
       <div className="w-full max-w-[1920px] mx-auto px-1 sm:px-2">
         {/* Header */}
-        <div className="mb-4 lg:mb-5 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center shadow-lg">
-              <span className="text-3xl">🛒</span>
+        <div className="mb-2 lg:mb-3 flex flex-col md:flex-row md:justify-between md:items-center gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-2xl">🛒</span>
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <h1 className="text-3xl lg:text-[2rem] font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 MS Store - Billing
               </h1>
-              <p className="text-gray-600 mt-1 flex items-center gap-2">
+              <p className="text-gray-600 mt-0.5 text-sm flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 Quick billing for customers
               </p>
@@ -411,7 +411,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
             <Button 
               variant="secondary" 
               onClick={onOpenHistory}
-              className="shadow-md hover:shadow-lg transition-shadow"
+              // className="shadow-md hover:shadow-lg transition-shadow"
+              className="shadow-md hover:shadow-lg transition-shadow px-3 py-2 text-sm"
             >
               <span className="flex items-center gap-2">
                 📜 History
@@ -420,7 +421,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
             <Button 
               variant="secondary" 
               onClick={onOpenProducts}
-              className="shadow-md hover:shadow-lg transition-shadow"
+              // className="shadow-md hover:shadow-lg transition-shadow"
+              className="shadow-md hover:shadow-lg transition-shadow px-3 py-2 text-sm"
             >
               <span className="flex items-center gap-2">
                 📦 Products
@@ -431,12 +433,12 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
           {/* Left: Item Entry Form */}
-          <div className="lg:col-span-7">
+          <div className="lg:col-span-5">
             <div className="card shadow-xl border-2 border-primary-100">
               <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 rounded-t-lg">
                 <h2 className="text-xl font-bold text-white">Add Item to Bill</h2>
               </div>
-              <div className="card-body">
+              <div className="card-body py-4 px-4">
                 {editingLineIndex !== null && (
                   <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
                     <span className="font-semibold">
@@ -449,7 +451,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 )}
                 {/* Category Filter */}
                 {categories.length > 1 && (
-                  <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                  <div className="mb-3 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
                     <label className="block text-xs font-semibold text-gray-800 mb-2 uppercase tracking-wide">
                       Category filter
                     </label>
@@ -575,7 +577,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 </div>
 
                 {/* Quantity and Unit */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-3 mb-3">
                   <Input
                     label="Quantity"
                     type="number"
@@ -660,8 +662,9 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
             </div>
           </div>
 
+          
           {/* Right: Current Bill */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-7">
             <div className="card sticky top-4 lg:top-6 shadow-xl border-2 border-green-100 flex flex-col max-h-[calc(100vh-2.5rem)]">
               <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-4 py-3 rounded-t-lg flex-shrink-0">
                 <h2 className="text-lg font-bold text-white">Current bill</h2>
@@ -671,7 +674,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
               </div>
               <div className="card-body flex flex-col min-h-0 flex-1 pt-3 pb-4 px-3 sm:px-4">
                 <div
-                  className="mb-3 flex-1 min-h-0 max-h-[calc(100vh-15.5rem)] overflow-auto overscroll-y-contain rounded-lg border border-gray-200 bg-white scrollbar-thin"
+                  className="mb-3 flex-1 min-h-0 max-h-[calc(100vh-11rem)] overflow-auto overscroll-y-contain rounded-lg border border-gray-200 bg-white scrollbar-thin"
                   role="region"
                   aria-label="Bill line items"
                 >
@@ -703,8 +706,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                                 key={item.line_id || `row-${index}`}
                                 className={`border-b border-gray-100 ${isEditingRow ? 'bg-amber-50' : index % 2 === 1 ? 'bg-gray-50/70' : ''}`}
                               >
-                                <td className="px-1 py-1.5 text-center text-gray-500 tabular-nums text-xs">{index + 1}</td>
-                                <td className="px-2 py-1.5 align-top min-w-0">
+                                <td className="px-1 py-1 text-center text-gray-500 tabular-nums text-xs">{index + 1}</td>
+                                <td className="px-2 py-1 align-top min-w-0">
                                   <div className="font-semibold text-gray-900 leading-tight break-words">{item.item_name}</div>
                                   {item.tamil_name ? (
                                     <div className="text-[11px] text-gray-600 leading-tight mt-0.5 break-words">{item.tamil_name}</div>
@@ -724,14 +727,14 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                                       type="number"
                                       min={0.001}
                                       step={0.001}
-                                      className="w-[3.25rem] text-right text-sm tabular-nums border border-gray-300 rounded px-0.5 py-1"
+                                      className="w-[4.8rem] h-10 text-center text-lg font-bold tabular-nums border-2 border-blue-300 rounded bg-blue-50"
                                       value={item.quantity}
                                       onChange={(e) => setLineQtyFromInput(index, e.target.value)}
                                       aria-label={`Quantity for ${item.item_name}`}
                                     />
                                     <button
                                       type="button"
-                                      className="h-8 w-7 shrink-0 rounded border border-gray-300 bg-gray-50 text-base font-bold leading-none text-gray-800 hover:bg-gray-100 active:bg-gray-200"
+                                      className="h-9 w-9 tex shrink-0 rounded border border-gray-300 bg-gray-50 text-base font-bold leading-none text-gray-800 hover:bg-gray-100 active:bg-gray-200"
                                       onClick={() => adjustLineQty(index, 1)}
                                       aria-label={`Increase quantity for ${item.item_name}`}
                                     >
@@ -773,12 +776,12 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                                   ₹{lineAmt.toFixed(2)}
                                 </td>
                                 <td className="px-1 py-1.5 align-middle">
-                                  <div className="flex flex-col gap-1">
+                                  <div className="flex gap-1">
                                     <Button
                                       type="button"
                                       variant="secondary"
                                       size="sm"
-                                      className="!px-1 !py-1 text-xs min-h-0"
+                                      className="!px-2 !py-1 text-[11px]"
                                       onClick={() => loadLineIntoForm(index)}
                                     >
                                       Edit
@@ -863,17 +866,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                   </div>
                 </div>
 
-                {billItems.length === 0 && (
-                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200 text-xs text-blue-900">
-                    <p className="font-semibold mb-1.5">Shortcuts</p>
-                    <ul className="space-y-0.5 list-disc list-inside">
-                      <li>Enter — add line or focus next field</li>
-                      <li>F9 — print bill</li>
-                      <li>Ctrl+D — remove last line</li>
-                      <li>Esc — cancel line edit / clear entry form</li>
-                    </ul>
-                  </div>
-                )}
+                
               </div>
             </div>
           </div>
