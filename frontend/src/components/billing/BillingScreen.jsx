@@ -277,10 +277,10 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6" onKeyDown={handleKeyDown}>
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-3 sm:p-5 lg:p-7" onKeyDown={handleKeyDown}>
+      <div className="w-full max-w-[1920px] mx-auto px-1 sm:px-2">
         {/* Header */}
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-4 lg:mb-5 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center shadow-lg">
               <span className="text-3xl">🛒</span>
@@ -317,9 +317,9 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 xl:gap-8 items-start">
           {/* Left: Item Entry Form */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-7">
             <div className="card shadow-xl border-2 border-primary-100">
               <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 rounded-t-lg">
                 <h2 className="text-xl font-bold text-white">Add Item to Bill</h2>
@@ -540,46 +540,52 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
           </div>
 
           {/* Right: Current Bill */}
-          <div className="lg:col-span-1">
-            <div className="card sticky top-6 shadow-xl border-2 border-green-100">
-              <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-6 py-4 rounded-t-lg">
+          <div className="lg:col-span-5">
+            <div className="card sticky top-4 lg:top-6 shadow-xl border-2 border-green-100 flex flex-col max-h-[calc(100vh-3rem)] lg:max-h-[calc(100vh-4rem)]">
+              <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-5 sm:px-6 py-4 rounded-t-lg flex-shrink-0">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span>🧾</span> Current Bill
+                  <span aria-hidden>🧾</span> Current Bill
                 </h2>
+                <p className="text-green-100 text-sm mt-1 font-medium">Scroll the list below when you add many items</p>
               </div>
-              <div className="card-body">
-                {/* Bill Items List */}
-                <div className="mb-4 max-h-96 overflow-y-auto scrollbar-thin">
+              <div className="card-body flex flex-col min-h-0 flex-1 pt-4 pb-5">
+                {/* Bill Items List — tall scroll region for long carts */}
+                <div
+                  className="mb-4 flex-1 min-h-[12rem] max-h-[min(65vh,680px)] overflow-y-auto overscroll-y-contain scroll-smooth scrollbar-thin pr-1 sm:pr-2 rounded-xl border border-green-100/80 bg-white/60 touch-pan-y"
+                  role="region"
+                  aria-label="Bill line items"
+                >
                   {billItems.length === 0 ? (
-                    <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
-                      <div className="text-6xl mb-3">🛒</div>
-                      <p className="text-gray-500 font-medium">No items added</p>
-                      <p className="text-sm text-gray-400 mt-1">Start adding products</p>
+                    <div className="text-center py-10 sm:py-12 px-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300 min-h-[min(40vh,320px)] flex flex-col items-center justify-center">
+                      <div className="text-5xl sm:text-6xl mb-3" aria-hidden>🛒</div>
+                      <p className="text-gray-600 font-semibold text-lg">No items added yet</p>
+                      <p className="text-base text-gray-500 mt-2 max-w-xs">Use the form on the left to search and add products</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 p-2 sm:p-3">
                       {billItems.map((item, index) => (
                         <div
                           key={index}
-                          className="p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary-300 transition-all shadow-sm hover:shadow-md"
+                          className="select-text p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary-300 transition-colors shadow-sm"
+                          title={`Line ${index + 1}: ${item.item_name}`}
                         >
-                          <div className="flex justify-between items-start mb-2">
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-900">{item.item_name}</div>
+                          <div className="flex justify-between items-start gap-3 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-lg sm:text-xl font-bold text-gray-900 leading-snug break-words">{item.item_name}</div>
                               {item.tamil_name && (
-                                <div className="text-sm text-gray-600 mt-1">{item.tamil_name}</div>
+                                <div className="text-base text-gray-600 mt-1 leading-snug break-words">{item.tamil_name}</div>
                               )}
                             </div>
-                            <div className="text-lg font-bold text-primary-700">
+                            <div className="text-xl sm:text-2xl font-bold text-primary-700 whitespace-nowrap tabular-nums shrink-0">
                               ₹{item.line_total.toFixed(2)}
                             </div>
                           </div>
-                          <div className="text-sm text-gray-600 flex items-center gap-2">
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                          <div className="text-base text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-2 mt-2">
+                            <span className="px-3 py-1.5 bg-blue-100 text-blue-900 rounded-lg font-bold text-base tabular-nums">
                               {item.quantity} {item.unit}
                             </span>
-                            <span className="text-gray-400">×</span>
-                            <span>₹{item.unit_price.toFixed(2)}</span>
+                            <span className="text-gray-400 font-bold text-lg" aria-hidden>×</span>
+                            <span className="font-semibold text-base tabular-nums">₹{item.unit_price.toFixed(2)} each</span>
                           </div>
                         </div>
                       ))}
@@ -588,7 +594,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 </div>
 
                 {/* Total */}
-                <div className="border-t-2 border-gray-200 pt-4 space-y-3">
+                <div className="border-t-2 border-gray-200 pt-4 space-y-3 flex-shrink-0 select-text">
                   <div className="flex justify-between text-gray-600 text-lg">
                     <span>Subtotal:</span>
                     <span className="font-semibold">₹{calculateSubtotal().toFixed(2)}</span>
@@ -604,44 +610,51 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                   )}
                 </div>
 
-                {/* Bill Actions */}
-                <div className="mt-6 space-y-3">
+                {/* Bill Actions — full words, large tap targets (no icon-only controls) */}
+                <div className="mt-4 space-y-3 flex-shrink-0">
                   <Button
                     variant="success"
                     fullWidth
                     onClick={saveBill}
                     disabled={billItems.length === 0 || isProcessing}
-                    className="text-lg py-4 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+                    className="text-lg py-4 min-h-[3.25rem] shadow-lg hover:shadow-xl transition-shadow"
                   >
                     {isProcessing ? (
                       <span className="flex items-center justify-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Processing...
+                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden />
+                        Processing…
                       </span>
                     ) : (
-                      <span className="flex items-center justify-center gap-2">
-                        🖨️ Print Bill (F9)
+                      <span className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                        <span className="font-bold">Print bill</span>
+                        <span className="text-sm font-normal opacity-95">(keyboard F9)</span>
                       </span>
                     )}
                   </Button>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <Button
                       variant="ghost"
                       fullWidth
                       onClick={removeLastItem}
                       disabled={billItems.length === 0}
-                      className="text-sm"
+                      className="min-h-[3.5rem] py-3 px-3 font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border-2 border-amber-300 hover:border-amber-400"
                     >
-                      ↶ Undo (Ctrl+D)
+                      <span className="flex flex-col items-center justify-center gap-0.5 text-center leading-tight">
+                        <span className="text-base sm:text-lg">Remove last item</span>
+                        <span className="text-xs font-semibold text-amber-800/90 normal-case">Keyboard: Ctrl+D</span>
+                      </span>
                     </Button>
                     <Button
                       variant="danger"
                       fullWidth
                       onClick={clearBill}
                       disabled={billItems.length === 0}
-                      className="text-sm"
+                      className="min-h-[3.5rem] py-3 px-3 font-bold shadow-md"
                     >
-                      🗑️ Clear All
+                      <span className="flex flex-col items-center justify-center gap-0.5 text-center leading-tight">
+                        <span className="text-base sm:text-lg">Clear entire bill</span>
+                        <span className="text-xs font-semibold opacity-95 normal-case">Removes every line</span>
+                      </span>
                     </Button>
                   </div>
                 </div>
@@ -649,8 +662,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 {/* Keyboard Shortcuts */}
                 {billItems.length === 0 && (
                   <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <p className="text-xs font-semibold text-blue-800 mb-2">⌨️ Keyboard Shortcuts</p>
-                    <div className="space-y-1 text-xs text-blue-700">
+                    <p className="text-sm font-semibold text-blue-900 mb-2">Keyboard shortcuts</p>
+                    <div className="space-y-1.5 text-sm text-blue-800">
                       <div className="flex justify-between">
                         <span>Enter</span>
                         <span>→ Add item</span>

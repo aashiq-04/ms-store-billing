@@ -269,10 +269,10 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-6" onKeyDown={handleKeyDown}>
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 p-4 lg:p-6" onKeyDown={handleKeyDown}>
+      <div className="max-w-[96%] 2xl:max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="mb-6 flex justify-between items-center">
+        <div className="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-gradient-to-br from-primary-600 to-primary-700 rounded-2xl flex items-center justify-center shadow-lg">
               <span className="text-3xl">🛒</span>
@@ -540,32 +540,34 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
               </div>
               <div className="card-body">
                 {/* Bill Items List */}
-                <div className="mb-4 max-h-96 overflow-y-auto scrollbar-thin">
+                <div className="mb-4 max-h-[55vh] overflow-y-auto scrollbar-thin pr-2">
                   {billItems.length === 0 ? (
                     <div className="text-center py-12 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300">
                       <div className="text-6xl mb-3">🛒</div>
-                      <p className="text-gray-500 font-medium">No items added</p>
-                      <p className="text-sm text-gray-400 mt-1">Start adding products</p>
+                      <p className="text-gray-500 font-medium text-lg">No items added</p>
+                      <p className="text-base text-gray-400 mt-1">Start adding products</p>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       {billItems.map((item, index) => (
                         <div
                           key={index}
-                          className="p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary-300 transition-all shadow-sm hover:shadow-md"
+                          className="p-5 bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary-400 transition-all shadow-md hover:shadow-lg"
                         >
                           <div className="flex justify-between items-start mb-2">
-                            <div className="font-semibold text-gray-900 flex-1">{item.item_name}</div>
-                            <div className="text-lg font-bold text-primary-700">
+                            <div className="text-xl font-bold text-gray-900 flex-1">{item.item_name}</div>
+                            <div className="text-2xl font-bold text-primary-700">
                               ₹{item.line_total.toFixed(2)}
                             </div>
                           </div>
-                          <div className="text-sm text-gray-600 flex items-center gap-2">
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
-                              {item.quantity} {item.unit}
-                            </span>
-                            <span className="text-gray-400">×</span>
-                            <span>₹{item.unit_price.toFixed(2)}</span>
+                          <div className="text-base text-gray-600 flex items-center justify-between mt-3">
+                            <div className="flex items-center gap-3">
+                              <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-bold text-lg">
+                                {item.quantity} {item.unit}
+                              </span>
+                              <span className="text-gray-400 font-bold text-xl">×</span>
+                              <span className="font-semibold text-lg">₹{item.unit_price.toFixed(2)}</span>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -610,24 +612,28 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                       </span>
                     )}
                   </Button>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-4">
                     <Button
                       variant="ghost"
                       fullWidth
                       onClick={removeLastItem}
                       disabled={billItems.length === 0}
-                      className="text-sm"
+                      className="text-lg py-3 font-bold bg-amber-50 hover:bg-amber-100 text-amber-800 border-2 border-amber-200"
                     >
-                      ↶ Undo (Ctrl+D)
+                      <span className="flex items-center justify-center gap-2">
+                        ↶ Undo Edit
+                      </span>
                     </Button>
                     <Button
                       variant="danger"
                       fullWidth
                       onClick={clearBill}
                       disabled={billItems.length === 0}
-                      className="text-sm"
+                      className="text-lg py-3 font-bold shadow-md"
                     >
-                      🗑️ Clear All
+                      <span className="flex items-center justify-center gap-2">
+                        🗑️ Delete All
+                      </span>
                     </Button>
                   </div>
                 </div>
