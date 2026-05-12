@@ -7,6 +7,16 @@ import { smartSearch } from '../../utils/smartSearch';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { useToast } from '../../context/ToastContext';
 import PrintPreview from './PrintPreview';
+
+const UNIT_OPTIONS = [
+  { value: 'piece', label: 'Piece' },
+  { value: 'kg', label: 'Kg' },
+  { value: 'gram', label: 'Gram' },
+  { value: 'liter', label: 'Liter' },
+  { value: 'packet', label: 'Packet' },
+  { value: 'dozen', label: 'Dozen' },
+];
+
 export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   // Form state
   const [itemName, setItemName] = useState('');
@@ -27,6 +37,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);  
   const [showPrintPreview, setShowPrintPreview] = useState(false);
   const [lastCreatedBill, setLastCreatedBill] = useState(null);
+  /** Index of bill line loaded into the add form for correction (null = adding new) */
+  const [editingLineIndex, setEditingLineIndex] = useState(null);
   // Refs
   const itemNameRef = useRef(null);
   const quantityRef = useRef(null);
@@ -81,7 +93,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
           // Use smart search (instant, no API call)
           const results = smartSearch(productsToSearch, itemName);
           
-          setSearchResults(results.slice(0, 20)); // Top 20 results
+          setSearchResults(results.slice(0, 40)); // More matches visible without scrolling as much
           if (results.length > 0) {
             setShowDropdown(true);
           } else {
@@ -121,9 +133,16 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
     }, 100);
   };
 
+  const lineTotal = (quantity, unitPrice) => {
+    const q = Number(quantity);
+    const p = Number(unitPrice);
+    if (Number.isNaN(q) || Number.isNaN(p)) return 0;
+    return q * p;
+  };
+
   // Calculate subtotal
   const calculateSubtotal = () => {
-    return billItems.reduce((sum, item) => sum + item.line_total, 0);
+    return billItems.reduce((sum, item) => sum + lineTotal(item.quantity, item.unit_price), 0);
   };
 
   // Calculate total (rounded up)
@@ -155,17 +174,24 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
       return;
     }
 
-    // Add item
     const newItem = {
-      item_name: itemName,
+      line_id: `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      item_name: itemName.trim(),
       tamil_name: selectedTamilName,
       quantity: qty,
       unit: unit,
       unit_price: unitPrice,
-      line_total: qty * unitPrice, // For UI display only, not sent to backend
+      line_total: lineTotal(qty, unitPrice),
     };
 
-    setBillItems([...billItems, newItem]);
+    if (editingLineIndex !== null) {
+      setBillItems((prev) =>
+        prev.map((it, i) => (i === editingLineIndex ? { ...newItem, line_id: it.line_id } : it))
+      );
+      setEditingLineIndex(null);
+    } else {
+      setBillItems((prev) => [...prev, newItem]);
+    }
 
     // Reset form
     setItemName('');
@@ -176,6 +202,89 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
     setShowDropdown(false);
     setSearchResults([]); // Clear search results
     itemNameRef.current?.focus();
+  };
+
+  const cancelLineEdit = () => {
+    setEditingLineIndex(null);
+    setItemName('');
+    setQuantity('1');
+    setPrice('');
+    setSelectedTamilName('');
+    setUnit('piece');
+    setShowDropdown(false);
+    setSearchResults([]);
+    itemNameRef.current?.focus();
+  };
+
+  const loadLineIntoForm = (index) => {
+    const item = billItems[index];
+    if (!item) return;
+    setEditingLineIndex(index);
+    setItemName(item.item_name);
+    setSelectedTamilName(item.tamil_name || '');
+    setQuantity(String(item.quantity));
+    setUnit(item.unit);
+    setPrice(String(item.unit_price));
+    setShowDropdown(false);
+    setSearchResults([]);
+    setTimeout(() => itemNameRef.current?.focus(), 0);
+  };
+
+  const removeBillLine = (index) => {
+    setBillItems((prev) => prev.filter((_, i) => i !== index));
+    if (editingLineIndex === index) {
+      setEditingLineIndex(null);
+      setItemName('');
+      setQuantity('1');
+      setPrice('');
+      setSelectedTamilName('');
+      setUnit('piece');
+      setShowDropdown(false);
+      setSearchResults([]);
+      itemNameRef.current?.focus();
+    } else if (editingLineIndex !== null && editingLineIndex > index) {
+      setEditingLineIndex(editingLineIndex - 1);
+    }
+  };
+
+  const patchBillLine = (index, patch) => {
+    setBillItems((prev) =>
+      prev.map((it, i) => {
+        if (i !== index) return it;
+        const next = { ...it, ...patch };
+        if (typeof next.unit_price === 'number' && !Number.isNaN(next.unit_price)) {
+          next.unit_price = Math.round(next.unit_price * 100) / 100;
+        }
+        if (typeof next.quantity === 'number' && !Number.isNaN(next.quantity)) {
+          next.quantity = Number(next.quantity.toFixed(4));
+        }
+        return { ...next, line_total: lineTotal(next.quantity, next.unit_price) };
+      })
+    );
+  };
+
+  const qtyBumpStep = (u) => {
+    if (u === 'kg' || u === 'liter') return 0.25;
+    if (u === 'gram') return 100;
+    return 1;
+  };
+
+  const adjustLineQty = (index, direction) => {
+    const item = billItems[index];
+    if (!item) return;
+    const step = qtyBumpStep(item.unit) * direction;
+    const nextQty = Math.max(0.001, Number((Number(item.quantity) + step).toFixed(4)));
+    patchBillLine(index, { quantity: nextQty });
+  };
+
+  const setLineQtyFromInput = (index, raw) => {
+    const q = parseFloat(raw);
+    if (raw === '' || Number.isNaN(q)) return;
+    if (q <= 0) {
+      showError('Quantity must be greater than zero');
+      return;
+    }
+    patchBillLine(index, { quantity: q });
   };
 
   // Remove last item
@@ -195,6 +304,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
   const confirmClearBill = () => {
     if (billItems.length > 0) {
       setBillItems([]);
+      setEditingLineIndex(null);
       setItemName('');
       setQuantity('1');
       setPrice('');
@@ -238,6 +348,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
 
       // Clear for next customer
       setBillItems([]);
+      setEditingLineIndex(null);
       setItemName('');
       setQuantity('1');
       setPrice('');
@@ -265,6 +376,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
       setQuantity('1');
       setPrice('');
       setSelectedTamilName('');
+      setEditingLineIndex(null);
       setShowDropdown(false);
       setSearchResults([]); // Clear search results
       itemNameRef.current?.focus();
@@ -325,26 +437,35 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 <h2 className="text-xl font-bold text-white">Add Item to Bill</h2>
               </div>
               <div className="card-body">
+                {editingLineIndex !== null && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                    <span className="font-semibold">
+                      Editing cart line {editingLineIndex + 1} — save with the green button or Enter on price
+                    </span>
+                    <Button type="button" variant="ghost" size="sm" onClick={cancelLineEdit} className="shrink-0 border border-amber-300">
+                      Cancel edit
+                    </Button>
+                  </div>
+                )}
                 {/* Category Filter */}
                 {categories.length > 1 && (
-                  <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                    <label className="block text-sm font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <span className="text-lg">⚡</span>
-                      Quick Category Filter
+                  <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                    <label className="block text-xs font-semibold text-gray-800 mb-2 uppercase tracking-wide">
+                      Category filter
                     </label>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-1.5 flex-wrap">
                       {categories.map((cat) => (
                         <button
                           key={cat}
                           type="button"
                           onClick={() => setSelectedCategory(cat)}
-                          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all transform hover:scale-105 ${
+                          className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
                             selectedCategory === cat
                               ? 'bg-gradient-to-r from-primary-600 to-primary-700 text-white shadow-lg'
                               : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200 shadow-sm'
                           }`}
                         >
-                          {cat === 'all' ? '📦 All' : cat}
+                          {cat === 'all' ? 'All' : cat}
                         </button>
                       ))}
                     </div>
@@ -400,10 +521,10 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
 
                   {/* Autocomplete Dropdown */}
                   {showDropdown && searchResults.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border-2 border-primary-500 rounded-xl shadow-2xl max-h-80 overflow-y-auto animate-slide-up">
-                      <div className="sticky top-0 bg-gradient-to-r from-primary-50 to-blue-50 px-4 py-2 border-b border-primary-200">
-                        <p className="text-xs font-semibold text-primary-700">
-                          ✨ {searchResults.length} match{searchResults.length !== 1 ? 'es' : ''} found
+                    <div className="absolute z-50 w-full mt-1 bg-white border-2 border-primary-500 rounded-lg shadow-2xl max-h-[min(52vh,560px)] overflow-y-auto overscroll-contain">
+                      <div className="sticky top-0 z-10 bg-primary-50 px-3 py-1.5 border-b border-primary-200 flex justify-between items-center">
+                        <p className="text-xs font-semibold text-primary-800">
+                          {searchResults.length} match{searchResults.length !== 1 ? 'es' : ''} — click or Enter on first
                         </p>
                       </div>
                       {searchResults.map((product, index) => (
@@ -415,26 +536,26 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                             e.stopPropagation();
                             selectProduct(product);
                           }}
-                          className={`w-full px-4 py-3 text-left hover:bg-primary-50 active:bg-primary-100 border-b border-gray-100 last:border-b-0 transition-all cursor-pointer ${
-                            index === 0 ? 'bg-primary-25' : ''
+                          className={`w-full px-3 py-2 text-left hover:bg-primary-50 active:bg-primary-100 border-b border-gray-100 last:border-b-0 text-sm leading-snug ${
+                            index === 0 ? 'bg-primary-50/80' : ''
                           }`}
                         >
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="font-semibold text-gray-900">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-gray-900 truncate">
                                 {product.name}
                                 {product.tamil_name && (
-                                  <span className="ml-2 text-gray-600 font-normal">({product.tamil_name})</span>
+                                  <span className="ml-1 text-gray-600 font-normal">({product.tamil_name})</span>
                                 )}
                               </div>
-                              <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-                                <span className="font-semibold text-primary-700">₹{product.price.toFixed(2)}</span>
-                                <span className="text-gray-400">•</span>
+                              <div className="text-xs text-gray-600 mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0">
+                                <span className="font-semibold text-primary-700 tabular-nums">₹{product.price.toFixed(2)}</span>
+                                <span className="text-gray-400">·</span>
                                 <span>{product.unit}</span>
                                 {product.category && (
                                   <>
-                                    <span className="text-gray-400">•</span>
-                                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+                                    <span className="text-gray-400">·</span>
+                                    <span className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
                                       {product.category}
                                     </span>
                                   </>
@@ -442,8 +563,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                               </div>
                             </div>
                             {index === 0 && (
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                                Press ↵
+                              <span className="shrink-0 text-[10px] px-1.5 py-0.5 bg-green-100 text-green-800 rounded font-medium">
+                                ↵
                               </span>
                             )}
                           </div>
@@ -480,12 +601,11 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                       onChange={(e) => setUnit(e.target.value)}
                       className="input"
                     >
-                      <option value="piece">Piece</option>
-                      <option value="kg">Kg</option>
-                      <option value="gram">Gram</option>
-                      <option value="liter">Liter</option>
-                      <option value="packet">Packet</option>
-                      <option value="dozen">Dozen</option>
+                      {UNIT_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -522,9 +642,10 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 {/* Action Buttons */}
                 <div className="flex gap-3">
                   <Button variant="primary" onClick={addItem} fullWidth>
-                    Add Item (Enter)
+                    {editingLineIndex !== null ? 'Save line (Enter)' : 'Add to bill (Enter)'}
                   </Button>
                   <Button variant="ghost" onClick={() => {
+                    setEditingLineIndex(null);
                     setItemName('');
                     setQuantity('1');
                     setPrice('');
@@ -541,146 +662,216 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
 
           {/* Right: Current Bill */}
           <div className="lg:col-span-5">
-            <div className="card sticky top-4 lg:top-6 shadow-xl border-2 border-green-100 flex flex-col max-h-[calc(100vh-3rem)] lg:max-h-[calc(100vh-4rem)]">
-              <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-5 sm:px-6 py-4 rounded-t-lg flex-shrink-0">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <span aria-hidden>🧾</span> Current Bill
-                </h2>
-                <p className="text-green-100 text-sm mt-1 font-medium">Scroll the list below when you add many items</p>
+            <div className="card sticky top-4 lg:top-6 shadow-xl border-2 border-green-100 flex flex-col max-h-[calc(100vh-2.5rem)]">
+              <div className="bg-gradient-to-r from-green-600 to-emerald-700 px-4 py-3 rounded-t-lg flex-shrink-0">
+                <h2 className="text-lg font-bold text-white">Current bill</h2>
+                <p className="text-green-100 text-xs mt-0.5 leading-snug">
+                  Change qty or rate on any line. Use Edit to fix the name in the form. Scroll to review before print.
+                </p>
               </div>
-              <div className="card-body flex flex-col min-h-0 flex-1 pt-4 pb-5">
-                {/* Bill Items List — tall scroll region for long carts */}
+              <div className="card-body flex flex-col min-h-0 flex-1 pt-3 pb-4 px-3 sm:px-4">
                 <div
-                  className="mb-4 flex-1 min-h-[12rem] max-h-[min(65vh,680px)] overflow-y-auto overscroll-y-contain scroll-smooth scrollbar-thin pr-1 sm:pr-2 rounded-xl border border-green-100/80 bg-white/60 touch-pan-y"
+                  className="mb-3 flex-1 min-h-0 max-h-[calc(100vh-15.5rem)] overflow-auto overscroll-y-contain rounded-lg border border-gray-200 bg-white scrollbar-thin"
                   role="region"
                   aria-label="Bill line items"
                 >
                   {billItems.length === 0 ? (
-                    <div className="text-center py-10 sm:py-12 px-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border-2 border-dashed border-gray-300 min-h-[min(40vh,320px)] flex flex-col items-center justify-center">
-                      <div className="text-5xl sm:text-6xl mb-3" aria-hidden>🛒</div>
-                      <p className="text-gray-600 font-semibold text-lg">No items added yet</p>
-                      <p className="text-base text-gray-500 mt-2 max-w-xs">Use the form on the left to search and add products</p>
+                    <div className="text-center py-8 px-3 text-sm text-gray-500">
+                      <p className="font-medium text-gray-700">Cart is empty</p>
+                      <p className="mt-1 text-xs">Search on the left, set qty and price, then add lines here.</p>
                     </div>
                   ) : (
-                    <div className="space-y-3 p-2 sm:p-3">
-                      {billItems.map((item, index) => (
-                        <div
-                          key={index}
-                          className="select-text p-4 bg-gradient-to-r from-white to-gray-50 rounded-xl border-2 border-gray-200 hover:border-primary-300 transition-colors shadow-sm"
-                          title={`Line ${index + 1}: ${item.item_name}`}
-                        >
-                          <div className="flex justify-between items-start gap-3 mb-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-lg sm:text-xl font-bold text-gray-900 leading-snug break-words">{item.item_name}</div>
-                              {item.tamil_name && (
-                                <div className="text-base text-gray-600 mt-1 leading-snug break-words">{item.tamil_name}</div>
-                              )}
-                            </div>
-                            <div className="text-xl sm:text-2xl font-bold text-primary-700 whitespace-nowrap tabular-nums shrink-0">
-                              ₹{item.line_total.toFixed(2)}
-                            </div>
-                          </div>
-                          <div className="text-base text-gray-600 flex flex-wrap items-center gap-x-3 gap-y-2 mt-2">
-                            <span className="px-3 py-1.5 bg-blue-100 text-blue-900 rounded-lg font-bold text-base tabular-nums">
-                              {item.quantity} {item.unit}
-                            </span>
-                            <span className="text-gray-400 font-bold text-lg" aria-hidden>×</span>
-                            <span className="font-semibold text-base tabular-nums">₹{item.unit_price.toFixed(2)} each</span>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-[520px] text-sm border-collapse select-text">
+                        <thead className="sticky top-0 z-10 bg-gray-100 shadow-sm">
+                          <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                            <th className="px-1.5 py-2 w-8 text-center border-b border-gray-200">#</th>
+                            <th className="px-2 py-2 border-b border-gray-200">Item</th>
+                            <th className="px-1 py-2 border-b border-gray-200 text-right whitespace-nowrap">Qty</th>
+                            <th className="px-1 py-2 border-b border-gray-200 w-[4.5rem]">Unit</th>
+                            <th className="px-1 py-2 border-b border-gray-200 text-right whitespace-nowrap">Rate ₹</th>
+                            <th className="px-2 py-2 border-b border-gray-200 text-right whitespace-nowrap">Amount</th>
+                            <th className="px-1 py-2 border-b border-gray-200 w-[5.5rem] text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {billItems.map((item, index) => {
+                            const lineAmt = lineTotal(item.quantity, item.unit_price);
+                            const isEditingRow = index === editingLineIndex;
+                            return (
+                              <tr
+                                key={item.line_id || `row-${index}`}
+                                className={`border-b border-gray-100 ${isEditingRow ? 'bg-amber-50' : index % 2 === 1 ? 'bg-gray-50/70' : ''}`}
+                              >
+                                <td className="px-1 py-1.5 text-center text-gray-500 tabular-nums text-xs">{index + 1}</td>
+                                <td className="px-2 py-1.5 align-top min-w-0">
+                                  <div className="font-semibold text-gray-900 leading-tight break-words">{item.item_name}</div>
+                                  {item.tamil_name ? (
+                                    <div className="text-[11px] text-gray-600 leading-tight mt-0.5 break-words">{item.tamil_name}</div>
+                                  ) : null}
+                                </td>
+                                <td className="px-1 py-1.5 align-middle">
+                                  <div className="flex items-center justify-end gap-0.5">
+                                    <button
+                                      type="button"
+                                      className="h-8 w-7 shrink-0 rounded border border-gray-300 bg-gray-50 text-base font-bold leading-none text-gray-800 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-40"
+                                      onClick={() => adjustLineQty(index, -1)}
+                                      aria-label={`Decrease quantity for ${item.item_name}`}
+                                    >
+                                      −
+                                    </button>
+                                    <input
+                                      type="number"
+                                      min={0.001}
+                                      step={0.001}
+                                      className="w-[3.25rem] text-right text-sm tabular-nums border border-gray-300 rounded px-0.5 py-1"
+                                      value={item.quantity}
+                                      onChange={(e) => setLineQtyFromInput(index, e.target.value)}
+                                      aria-label={`Quantity for ${item.item_name}`}
+                                    />
+                                    <button
+                                      type="button"
+                                      className="h-8 w-7 shrink-0 rounded border border-gray-300 bg-gray-50 text-base font-bold leading-none text-gray-800 hover:bg-gray-100 active:bg-gray-200"
+                                      onClick={() => adjustLineQty(index, 1)}
+                                      aria-label={`Increase quantity for ${item.item_name}`}
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+                                </td>
+                                <td className="px-1 py-1.5 align-middle">
+                                  <select
+                                    value={item.unit}
+                                    onChange={(e) => patchBillLine(index, { unit: e.target.value })}
+                                    className="w-full max-w-[5rem] text-xs border border-gray-300 rounded py-1 px-0.5 bg-white"
+                                    aria-label={`Unit for ${item.item_name}`}
+                                  >
+                                    {UNIT_OPTIONS.map((o) => (
+                                      <option key={o.value} value={o.value}>
+                                        {o.label}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="px-1 py-1.5 align-middle">
+                                  <input
+                                    type="number"
+                                    min={0.01}
+                                    step={0.01}
+                                    className="w-[4.25rem] text-right text-sm tabular-nums border border-gray-300 rounded px-0.5 py-1"
+                                    value={item.unit_price}
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      if (raw === '') return;
+                                      const p = parseFloat(raw);
+                                      if (!Number.isNaN(p) && p > 0) patchBillLine(index, { unit_price: p });
+                                    }}
+                                    aria-label={`Rate per ${item.unit} for ${item.item_name}`}
+                                  />
+                                </td>
+                                <td className="px-2 py-1.5 align-middle text-right font-semibold text-gray-900 tabular-nums whitespace-nowrap">
+                                  ₹{lineAmt.toFixed(2)}
+                                </td>
+                                <td className="px-1 py-1.5 align-middle">
+                                  <div className="flex flex-col gap-1">
+                                    <Button
+                                      type="button"
+                                      variant="secondary"
+                                      size="sm"
+                                      className="!px-1 !py-1 text-xs min-h-0"
+                                      onClick={() => loadLineIntoForm(index)}
+                                    >
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="danger"
+                                      size="sm"
+                                      className="!px-1 !py-1 text-xs min-h-0"
+                                      onClick={() => removeBillLine(index)}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
 
                 {/* Total */}
-                <div className="border-t-2 border-gray-200 pt-4 space-y-3 flex-shrink-0 select-text">
-                  <div className="flex justify-between text-gray-600 text-lg">
-                    <span>Subtotal:</span>
-                    <span className="font-semibold">₹{calculateSubtotal().toFixed(2)}</span>
+                <div className="border-t border-gray-200 pt-3 space-y-2 flex-shrink-0 select-text">
+                  <div className="flex justify-between text-gray-600 text-sm">
+                    <span>Subtotal</span>
+                    <span className="font-semibold tabular-nums">₹{calculateSubtotal().toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200">
-                    <span className="text-2xl font-bold text-gray-900">Total:</span>
-                    <span className="text-3xl font-bold text-green-700">₹{calculateTotal()}</span>
+                  <div className="flex justify-between items-center px-3 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-200">
+                    <span className="text-lg font-bold text-gray-900">Total</span>
+                    <span className="text-2xl font-bold text-green-700 tabular-nums">₹{calculateTotal()}</span>
                   </div>
                   {billItems.length > 0 && (
-                    <p className="text-xs text-center text-gray-500">
-                      {billItems.length} item{billItems.length !== 1 ? 's' : ''} • Rounded to nearest rupee
+                    <p className="text-[11px] text-center text-gray-500">
+                      {billItems.length} line{billItems.length !== 1 ? 's' : ''} · rounded up to whole rupee
                     </p>
                   )}
                 </div>
 
-                {/* Bill Actions — full words, large tap targets (no icon-only controls) */}
-                <div className="mt-4 space-y-3 flex-shrink-0">
+                <div className="mt-3 space-y-2 flex-shrink-0">
                   <Button
                     variant="success"
                     fullWidth
                     onClick={saveBill}
                     disabled={billItems.length === 0 || isProcessing}
-                    className="text-lg py-4 min-h-[3.25rem] shadow-lg hover:shadow-xl transition-shadow"
+                    className="text-base py-3 min-h-[2.75rem] shadow-md"
                   >
                     {isProcessing ? (
                       <span className="flex items-center justify-center gap-2">
-                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden />
+                        <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" aria-hidden />
                         Processing…
                       </span>
                     ) : (
-                      <span className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+                      <span>
                         <span className="font-bold">Print bill</span>
-                        <span className="text-sm font-normal opacity-95">(keyboard F9)</span>
+                        <span className="text-sm font-normal opacity-90"> (F9)</span>
                       </span>
                     )}
                   </Button>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <Button
                       variant="ghost"
                       fullWidth
                       onClick={removeLastItem}
                       disabled={billItems.length === 0}
-                      className="min-h-[3.5rem] py-3 px-3 font-bold bg-amber-50 hover:bg-amber-100 text-amber-900 border-2 border-amber-300 hover:border-amber-400"
+                      className="text-sm py-2.5 font-semibold bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300"
                     >
-                      <span className="flex flex-col items-center justify-center gap-0.5 text-center leading-tight">
-                        <span className="text-base sm:text-lg">Remove last item</span>
-                        <span className="text-xs font-semibold text-amber-800/90 normal-case">Keyboard: Ctrl+D</span>
-                      </span>
+                      Undo last line
+                      <span className="block text-[10px] font-normal text-amber-800/90">Ctrl+D</span>
                     </Button>
                     <Button
                       variant="danger"
                       fullWidth
                       onClick={clearBill}
                       disabled={billItems.length === 0}
-                      className="min-h-[3.5rem] py-3 px-3 font-bold shadow-md"
+                      className="text-sm py-2.5 font-semibold"
                     >
-                      <span className="flex flex-col items-center justify-center gap-0.5 text-center leading-tight">
-                        <span className="text-base sm:text-lg">Clear entire bill</span>
-                        <span className="text-xs font-semibold opacity-95 normal-case">Removes every line</span>
-                      </span>
+                      Clear all lines
                     </Button>
                   </div>
                 </div>
 
-                {/* Keyboard Shortcuts */}
                 {billItems.length === 0 && (
-                  <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <p className="text-sm font-semibold text-blue-900 mb-2">Keyboard shortcuts</p>
-                    <div className="space-y-1.5 text-sm text-blue-800">
-                      <div className="flex justify-between">
-                        <span>Enter</span>
-                        <span>→ Add item</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>F9</span>
-                        <span>→ Print bill</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Ctrl+D</span>
-                        <span>→ Remove last</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Esc</span>
-                        <span>→ Clear entry</span>
-                      </div>
-                    </div>
+                  <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200 text-xs text-blue-900">
+                    <p className="font-semibold mb-1.5">Shortcuts</p>
+                    <ul className="space-y-0.5 list-disc list-inside">
+                      <li>Enter — add line or focus next field</li>
+                      <li>F9 — print bill</li>
+                      <li>Ctrl+D — remove last line</li>
+                      <li>Esc — cancel line edit / clear entry form</li>
+                    </ul>
                   </div>
                 )}
               </div>
