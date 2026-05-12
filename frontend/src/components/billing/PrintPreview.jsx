@@ -112,10 +112,12 @@ export default function PrintPreview({ bill, onClose }) {
     setIsLoading(false);
 };
 
-  useEffect(() => {
-    if (bill) generateReceipt();
-  }, [bill]);
-
+useEffect(() => {
+  if (bill) {
+    generateReceipt();
+  }
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [bill]);
 
 
   const printPreview = () => {
