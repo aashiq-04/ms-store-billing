@@ -646,30 +646,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                   </div>
                 </div>
 
-                {/* Keyboard Shortcuts */}
-                {billItems.length === 0 && (
-                  <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <p className="text-xs font-semibold text-blue-800 mb-2">⌨️ Keyboard Shortcuts</p>
-                    <div className="space-y-1 text-xs text-blue-700">
-                      <div className="flex justify-between">
-                        <span>Enter</span>
-                        <span>→ Add item</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>F9</span>
-                        <span>→ Print bill</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Ctrl+D</span>
-                        <span>→ Remove last</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Esc</span>
-                        <span>→ Clear entry</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+               
               </div>
             </div>
           </div>
