@@ -17,7 +17,7 @@ const UNIT_OPTIONS = [
   { value: 'dozen', label: 'Dozen' },
 ];
 
-export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
+export default function BillingScreen({ onOpenProducts, onOpenHistory, onLogout }) {
   // Form state
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('1');
@@ -408,8 +408,8 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
             </div>
           </div>
           <div className="flex gap-3">
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               onClick={onOpenHistory}
               // className="shadow-md hover:shadow-lg transition-shadow"
               className="shadow-md hover:shadow-lg transition-shadow px-3 py-2 text-sm"
@@ -418,14 +418,23 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory }) {
                 📜 History
               </span>
             </Button>
-            <Button 
-              variant="secondary" 
+            <Button
+              variant="secondary"
               onClick={onOpenProducts}
               // className="shadow-md hover:shadow-lg transition-shadow"
               className="shadow-md hover:shadow-lg transition-shadow px-3 py-2 text-sm"
             >
               <span className="flex items-center gap-2">
                 📦 Products
+              </span>
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={onLogout}
+              className="shadow-md hover:shadow-lg transition-shadow px-3 py-2 text-sm text-gray-600 hover:text-red-600"
+            >
+              <span className="flex items-center gap-2">
+                🚪 Logout
               </span>
             </Button>
           </div>

@@ -23,6 +23,15 @@ export default function App() {
       });
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch (e) {
+      // Ignore logout errors
+    }
+    setIsAuthenticated(false);
+  };
+
   if (isCheckingSession) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 flex items-center justify-center">
@@ -45,6 +54,7 @@ export default function App() {
         <BillingScreen
           onOpenProducts={() => setCurrentScreen('products')}
           onOpenHistory={() => setCurrentScreen('history')}
+          onLogout={handleLogout}
         />
       ) : currentScreen === 'products' ? (
         <ProductManager onClose={() => setCurrentScreen('billing')} />
