@@ -587,21 +587,26 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory, onLogout 
 
                 {/* Quantity and Unit */}
                 <div className="grid grid-cols-2 gap-3 mb-3">
-                  <Input
-                    label="Quantity"
-                    type="number"
-                    step="0.01"
-                    placeholder="1"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        priceRef.current?.focus();
-                      }
-                    }}
-                    inputRef={quantityRef}
-                  />
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="1"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          priceRef.current?.focus();
+                        }
+                      }}
+                      ref={quantityRef}
+                      className="input h-12 text-lg"
+                    />
+                  </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -610,7 +615,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory, onLogout 
                     <select
                       value={unit}
                       onChange={(e) => setUnit(e.target.value)}
-                      className="input"
+                      className="input h-12"
                     >
                       {UNIT_OPTIONS.map((o) => (
                         <option key={o.value} value={o.value}>
@@ -646,7 +651,7 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory, onLogout 
                       }
                     }}
                     ref={priceRef}
-                    className="input"
+                    className="input h-12 text-lg"
                   />
                 </div>
 
@@ -690,87 +695,83 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory, onLogout 
                   {billItems.length === 0 ? (
                     <div className="text-center py-8 px-3 text-sm text-gray-500">
                       <p className="font-medium text-gray-700">Cart is empty</p>
-                      <p className="mt-1 text-xs">Search on the left, set qty and price, then add lines here.</p>
+                      <p className="mt-1 text-xs">Search above, set qty and price, then add lines here.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-[520px] text-sm border-collapse select-text">
-                        <thead className="sticky top-0 z-10 bg-gray-100 shadow-sm">
-                          <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-gray-600">
-                            <th className="px-1.5 py-2 w-8 text-center border-b border-gray-200">#</th>
-                            <th className="px-2 py-2 border-b border-gray-200">Item</th>
-                            <th className="px-1 py-2 border-b border-gray-200 text-right whitespace-nowrap">Qty</th>
-                            <th className="px-1 py-2 border-b border-gray-200 w-[4.5rem]">Unit</th>
-                            <th className="px-1 py-2 border-b border-gray-200 text-right whitespace-nowrap">Rate ₹</th>
-                            <th className="px-2 py-2 border-b border-gray-200 text-right whitespace-nowrap">Amount</th>
-                            <th className="px-1 py-2 border-b border-gray-200 w-[5.5rem] text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {billItems.map((item, index) => {
-                            const lineAmt = lineTotal(item.quantity, item.unit_price);
-                            const isEditingRow = index === editingLineIndex;
-                            return (
-                              <tr
-                                key={item.line_id || `row-${index}`}
-                                className={`border-b border-gray-100 ${isEditingRow ? 'bg-amber-50' : index % 2 === 1 ? 'bg-gray-50/70' : ''}`}
-                              >
-                                <td className="px-1 py-1 text-center text-gray-500 tabular-nums text-xs">{index + 1}</td>
-                                <td className="px-2 py-1 align-top min-w-0">
-                                  <div className="font-semibold text-gray-900 leading-tight break-words">{item.item_name}</div>
-                                  {item.tamil_name ? (
-                                    <div className="text-[11px] text-gray-600 leading-tight mt-0.5 break-words">{item.tamil_name}</div>
-                                  ) : null}
-                                </td>
-                                <td className="px-1 py-1.5 align-middle">
-                                  <div className="flex items-center justify-end gap-0.5">
-                                    <button
-                                      type="button"
-                                      className="h-8 w-7 shrink-0 rounded border border-gray-300 bg-gray-50 text-base font-bold leading-none text-gray-800 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-40"
-                                      onClick={() => adjustLineQty(index, -1)}
-                                      aria-label={`Decrease quantity for ${item.item_name}`}
-                                    >
-                                      −
-                                    </button>
-                                    <input
-                                      type="number"
-                                      min={0.001}
-                                      step={0.001}
-                                      className="w-[4.8rem] h-10 text-center text-lg font-bold tabular-nums border-2 border-blue-300 rounded bg-blue-50"
-                                      value={item.quantity}
-                                      onChange={(e) => setLineQtyFromInput(index, e.target.value)}
-                                      aria-label={`Quantity for ${item.item_name}`}
-                                    />
-                                    <button
-                                      type="button"
-                                      className="h-9 w-9 tex shrink-0 rounded border border-gray-300 bg-gray-50 text-base font-bold leading-none text-gray-800 hover:bg-gray-100 active:bg-gray-200"
-                                      onClick={() => adjustLineQty(index, 1)}
-                                      aria-label={`Increase quantity for ${item.item_name}`}
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </td>
-                                <td className="px-1 py-1.5 align-middle">
-                                  <select
-                                    value={item.unit}
-                                    onChange={(e) => patchBillLine(index, { unit: e.target.value })}
-                                    className="w-full max-w-[5rem] text-xs border border-gray-300 rounded py-1 px-0.5 bg-white"
-                                    aria-label={`Unit for ${item.item_name}`}
+                    <>
+                      {/* Mobile: Card layout (no horizontal scroll) */}
+                      <div className="lg:hidden divide-y divide-gray-200">
+                        {billItems.map((item, index) => {
+                          const lineAmt = lineTotal(item.quantity, item.unit_price);
+                          const isEditingRow = index === editingLineIndex;
+                          return (
+                            <div
+                              key={item.line_id || `row-${index}`}
+                              className={`p-3 ${isEditingRow ? 'bg-amber-50' : index % 2 === 1 ? 'bg-gray-50/70' : ''}`}
+                            >
+                              {/* Item name and amount */}
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex-1 min-w-0 pr-2">
+                                  <div className="font-semibold text-gray-900 text-sm">{index + 1}. {item.item_name}</div>
+                                  {item.tamil_name && (
+                                    <div className="text-xs text-gray-600">{item.tamil_name}</div>
+                                  )}
+                                </div>
+                                <div className="text-right">
+                                  <div className="font-bold text-gray-900 text-base">₹{lineAmt.toFixed(2)}</div>
+                                </div>
+                              </div>
+
+                              {/* Quantity controls */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    className="h-11 w-11 shrink-0 rounded-lg border-2 border-gray-300 bg-white text-xl font-bold text-gray-800 hover:bg-gray-100 active:bg-gray-200 active:scale-95 transition-all"
+                                    onClick={() => adjustLineQty(index, -1)}
+                                    aria-label={`Decrease quantity for ${item.item_name}`}
                                   >
-                                    {UNIT_OPTIONS.map((o) => (
-                                      <option key={o.value} value={o.value}>
-                                        {o.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="px-1 py-1.5 align-middle">
+                                    −
+                                  </button>
+                                  <input
+                                    type="number"
+                                    min={0.001}
+                                    step={0.001}
+                                    className="w-16 h-11 text-center text-lg font-bold tabular-nums border-2 border-blue-400 rounded-lg bg-blue-50"
+                                    value={item.quantity}
+                                    onChange={(e) => setLineQtyFromInput(index, e.target.value)}
+                                    aria-label={`Quantity for ${item.item_name}`}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="h-11 w-11 shrink-0 rounded-lg border-2 border-gray-300 bg-white text-xl font-bold text-gray-800 hover:bg-gray-100 active:bg-gray-200 active:scale-95 transition-all"
+                                    onClick={() => adjustLineQty(index, 1)}
+                                    aria-label={`Increase quantity for ${item.item_name}`}
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                                <select
+                                  value={item.unit}
+                                  onChange={(e) => patchBillLine(index, { unit: e.target.value })}
+                                  className="h-11 px-2 text-sm border-2 border-gray-300 rounded-lg bg-white"
+                                  aria-label={`Unit for ${item.item_name}`}
+                                >
+                                  {UNIT_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+
+                              {/* Rate and actions */}
+                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 flex-1">
+                                  <span className="text-xs text-gray-500">Rate:</span>
                                   <input
                                     type="number"
                                     min={0.01}
                                     step={0.01}
-                                    className="w-[4.25rem] text-right text-sm tabular-nums border border-gray-300 rounded px-0.5 py-1"
+                                    className="flex-1 max-w-24 h-10 text-right text-base font-medium tabular-nums border-2 border-gray-300 rounded-lg px-2"
                                     value={item.unit_price}
                                     onChange={(e) => {
                                       const raw = e.target.value;
@@ -780,38 +781,142 @@ export default function BillingScreen({ onOpenProducts, onOpenHistory, onLogout 
                                     }}
                                     aria-label={`Rate per ${item.unit} for ${item.item_name}`}
                                   />
-                                </td>
-                                <td className="px-2 py-1.5 align-middle text-right font-semibold text-gray-900 tabular-nums whitespace-nowrap">
-                                  ₹{lineAmt.toFixed(2)}
-                                </td>
-                                <td className="px-1 py-1.5 align-middle">
-                                  <div className="flex gap-1">
-                                    <Button
-                                      type="button"
-                                      variant="secondary"
-                                      size="sm"
-                                      className="!px-2 !py-1 text-[11px]"
-                                      onClick={() => loadLineIntoForm(index)}
+                                </div>
+                                <button
+                                  type="button"
+                                  className="h-10 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 rounded-lg font-medium text-sm border border-blue-200"
+                                  onClick={() => loadLineIntoForm(index)}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  className="h-10 px-4 bg-red-50 text-red-700 hover:bg-red-100 active:bg-red-200 rounded-lg font-medium text-sm border border-red-200"
+                                  onClick={() => removeBillLine(index)}
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Tablet/Desktop: Table layout */}
+                      <div className="hidden lg:block overflow-x-auto">
+                        <table className="w-full text-sm border-collapse select-text">
+                          <thead className="sticky top-0 z-10 bg-gray-100 shadow-sm">
+                            <tr className="text-left text-[11px] font-semibold uppercase tracking-wide text-gray-600">
+                              <th className="px-2 py-2 w-8 text-center border-b border-gray-200">#</th>
+                              <th className="px-2 py-2 border-b border-gray-200">Item</th>
+                              <th className="px-2 py-2 border-b border-gray-200 text-right whitespace-nowrap">Qty</th>
+                              <th className="px-2 py-2 border-b border-gray-200 w-16">Unit</th>
+                              <th className="px-2 py-2 border-b border-gray-200 text-right whitespace-nowrap">Rate ₹</th>
+                              <th className="px-2 py-2 border-b border-gray-200 text-right whitespace-nowrap">Amount</th>
+                              <th className="px-2 py-2 border-b border-gray-200 w-24 text-center">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {billItems.map((item, index) => {
+                              const lineAmt = lineTotal(item.quantity, item.unit_price);
+                              const isEditingRow = index === editingLineIndex;
+                              return (
+                                <tr
+                                  key={item.line_id || `row-${index}`}
+                                  className={`border-b border-gray-100 ${isEditingRow ? 'bg-amber-50' : index % 2 === 1 ? 'bg-gray-50/70' : ''}`}
+                                >
+                                  <td className="px-2 py-2 text-center text-gray-500 tabular-nums text-xs">{index + 1}</td>
+                                  <td className="px-2 py-2 align-top min-w-0">
+                                    <div className="font-semibold text-gray-900 leading-tight break-words">{item.item_name}</div>
+                                    {item.tamil_name ? (
+                                      <div className="text-xs text-gray-600 leading-tight mt-0.5 break-words">{item.tamil_name}</div>
+                                    ) : null}
+                                  </td>
+                                  <td className="px-2 py-2 align-middle">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <button
+                                        type="button"
+                                        className="h-9 w-9 shrink-0 rounded-lg border border-gray-300 bg-gray-50 text-lg font-bold text-gray-800 hover:bg-gray-100 active:bg-gray-200 disabled:opacity-40"
+                                        onClick={() => adjustLineQty(index, -1)}
+                                        aria-label={`Decrease quantity for ${item.item_name}`}
+                                      >
+                                        −
+                                      </button>
+                                      <input
+                                        type="number"
+                                        min={0.001}
+                                        step={0.001}
+                                        className="w-16 h-10 text-center text-lg font-bold tabular-nums border-2 border-blue-300 rounded-lg bg-blue-50"
+                                        value={item.quantity}
+                                        onChange={(e) => setLineQtyFromInput(index, e.target.value)}
+                                        aria-label={`Quantity for ${item.item_name}`}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="h-9 w-9 shrink-0 rounded-lg border border-gray-300 bg-gray-50 text-lg font-bold text-gray-800 hover:bg-gray-100 active:bg-gray-200"
+                                        onClick={() => adjustLineQty(index, 1)}
+                                        aria-label={`Increase quantity for ${item.item_name}`}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="px-2 py-2 align-middle">
+                                    <select
+                                      value={item.unit}
+                                      onChange={(e) => patchBillLine(index, { unit: e.target.value })}
+                                      className="w-full text-sm border border-gray-300 rounded-lg py-1.5 px-1 bg-white"
+                                      aria-label={`Unit for ${item.item_name}`}
                                     >
-                                      Edit
-                                    </Button>
-                                    <Button
-                                      type="button"
-                                      variant="danger"
-                                      size="sm"
-                                      className="!px-1 !py-1 text-xs min-h-0"
-                                      onClick={() => removeBillLine(index)}
-                                    >
-                                      Remove
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
+                                      {UNIT_OPTIONS.map((o) => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td className="px-2 py-2 align-middle">
+                                    <input
+                                      type="number"
+                                      min={0.01}
+                                      step={0.01}
+                                      className="w-20 text-right text-sm tabular-nums border border-gray-300 rounded-lg px-2 py-1.5"
+                                      value={item.unit_price}
+                                      onChange={(e) => {
+                                        const raw = e.target.value;
+                                        if (raw === '') return;
+                                        const p = parseFloat(raw);
+                                        if (!Number.isNaN(p) && p > 0) patchBillLine(index, { unit_price: p });
+                                      }}
+                                      aria-label={`Rate per ${item.unit} for ${item.item_name}`}
+                                    />
+                                  </td>
+                                  <td className="px-2 py-2 align-middle text-right font-semibold text-gray-900 tabular-nums whitespace-nowrap">
+                                    ₹{lineAmt.toFixed(2)}
+                                  </td>
+                                  <td className="px-2 py-2 align-middle">
+                                    <div className="flex gap-1 justify-center">
+                                      <button
+                                        type="button"
+                                        className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200 rounded-lg font-medium text-sm border border-blue-200"
+                                        onClick={() => loadLineIntoForm(index)}
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        type="button"
+                                        className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 active:bg-red-200 rounded-lg font-medium text-sm border border-red-200"
+                                        onClick={() => removeBillLine(index)}
+                                      >
+                                        Remove
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
                   )}
                 </div>
 
