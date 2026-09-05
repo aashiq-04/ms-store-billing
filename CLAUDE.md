@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current Status (as of 2026-09-05)
 
-**Phases 1-6: Completed.** The app is stable and tested.
+**Phases 1-7: Completed.** The app is stable and tested.
 
 **Last 3 commits:**
+- `8dc67dd` — Add logout button to billing screen header
 - `cdfbbcc` — Update roadmap: Phase 5 end-to-end testing completed
 - `50150ba` — Add 401 session expiry handling in API client
-- `1486840` — Add PIN-based authentication with multi-session support
 
 **What works:**
 - PIN authentication (default: `1234`) with 7-day sessions
@@ -17,9 +17,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Full billing workflow (products, cart, bills, history)
 - Thermal receipt printing (ESC/POS)
 - Session expiry gracefully redirects to login
+- Logout button in UI header
 
 **Next steps (optional):**
-- Phase 7: Logout button in UI, login rate limiting, persistent sessions
 - Phase 8: GitHub Actions CI/CD
 
 ---
@@ -82,12 +82,14 @@ When continuing this project, always inspect this section first. Continue from t
    - **Result:** Multiple devices can now stay logged in simultaneously with independent sessions.
 
 ### Phase 7 — Optional Improvements
-**Status:** Future / Optional
-**Examples:**
-- Logout button in UI
-- Login rate limiting
-- Persistent sessions (survive server restart)
-- Other improvements based on actual usage
+**Status:** Completed
+**Goal:** Add practical improvements for single-user usage scenario.
+**Implemented:**
+- ✅ **Logout button in UI** — Added to BillingScreen header, calls `/api/logout` and returns to login screen
+
+**Excluded (with reasoning):**
+- **Login rate limiting** — Single-user, trusted device scenario. No meaningful threat model; attacker would need LAN/Tailscale access first.
+- **Persistent sessions** — Re-login after restart is acceptable. Avoids file I/O complexity and potential state corruption.
 
 ### Phase 8 — CI/CD
 **Status:** Future
