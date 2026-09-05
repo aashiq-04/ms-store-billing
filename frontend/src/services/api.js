@@ -16,6 +16,12 @@ async function fetchAPI(url, options = {}) {
 
     const data = await response.json();
 
+    if (response.status === 401) {
+      // Session expired — reload to show login screen
+      window.location.reload();
+      throw new Error('Session expired');
+    }
+
     if (!response.ok) {
       throw new Error(data.error || 'API request failed');
     }
