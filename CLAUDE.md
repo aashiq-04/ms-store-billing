@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Current Status (as of 2026-09-05)
 
-**Phases 1-7: Completed.** The app is stable and tested.
+**Phases 1-8: Completed.** The app is stable, tested, and optimized for mobile.
 
 **Last 3 commits:**
+- `98a9650` — Mobile UI/UX optimization for billing screen
 - `8dc67dd` — Add logout button to billing screen header
-- `cdfbbcc` — Update roadmap: Phase 5 end-to-end testing completed
-- `50150ba` — Add 401 session expiry handling in API client
+- `3ecac83` — Update roadmap: Phase 7 completed
 
 **What works:**
 - PIN authentication (default: `1234`) with 7-day sessions
@@ -18,9 +18,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Thermal receipt printing (ESC/POS)
 - Session expiry gracefully redirects to login
 - Logout button in UI header
+- Mobile-optimized cart with touch-friendly controls
 
 **Next steps (optional):**
-- Phase 8: GitHub Actions CI/CD
+- Phase 9: GitHub Actions CI/CD
 
 ---
 
@@ -91,7 +92,33 @@ When continuing this project, always inspect this section first. Continue from t
 - **Login rate limiting** — Single-user, trusted device scenario. No meaningful threat model; attacker would need LAN/Tailscale access first.
 - **Persistent sessions** — Re-login after restart is acceptable. Avoids file I/O complexity and potential state corruption.
 
-### Phase 8 — CI/CD
+### Phase 8 — Mobile UI/UX Optimization
+**Status:** Completed
+**Goal:** Optimize billing screen for real-world mobile and tablet usage by a single user.
+**Implemented:**
+- ✅ **Removed horizontal scroll on mobile** — Cart now uses vertical card layout (`lg:hidden`) instead of `min-w-[520px]` table
+- ✅ **Retained table on tablet/desktop** — Efficient table layout preserved with `hidden lg:block`
+- ✅ **Increased touch targets** — Quantity +/- buttons now 44px (h-11 w-11), inputs h-12 on mobile
+- ✅ **Widened rate input** — Mobile rate input has more space, better for numeric keyboard
+- ✅ **Improved input sizing** — All form inputs get h-12 for better mobile touch experience
+
+**Files changed:**
+- `frontend/src/components/billing/BillingScreen.jsx`
+
+**Responsive behavior:**
+- Mobile (<1024px): Vertical card layout with large touch targets, no horizontal scroll
+- Tablet/Desktop (≥1024px): Efficient table layout, slightly larger controls
+
+**Build verification:**
+- ✅ Frontend builds successfully
+- ✅ Go backend compiles successfully
+
+**Deferred for real-world testing:**
+- Gesture-based interactions (swipe to remove)
+- Quick-add for frequently used products
+- Further optimizations based on actual usage feedback
+
+### Phase 9 — CI/CD
 **Status:** Future
 **Goal:** Add automated builds via GitHub Actions workflow after the application is stable.
 
