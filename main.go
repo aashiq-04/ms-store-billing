@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -16,8 +17,9 @@ import (
 	"syscall"
 	"time"
 
-    "ms-store-billing/internal/db"
-    "ms-store-billing/internal/handlers"
+	"ms-store-billing/internal/auth"
+	"ms-store-billing/internal/db"
+	"ms-store-billing/internal/handlers"
 )
 
 const ServerPort = "8080"
@@ -49,6 +51,9 @@ func main() {
     dbPath := filepath.Join(dataDir, "msstore.db")
     log.Printf("Database: %s", dbPath)
 
+    // Initialize authentication
+    auth.Init()
+
     // Initialize database
     if err := db.Initialize(dbPath, exeDir); err != nil {
         log.Fatal("Database initialization failed:", err)
@@ -71,12 +76,23 @@ func main() {
     serverURL := fmt.Sprintf("http://localhost:%s", ServerPort)
 	serverAddr := fmt.Sprintf(":%s", ServerPort)
 
+    // Get LAN IP for multi-device access
+    lanIP := getLANIP()
+
     log.Println("========================================")
     log.Printf("✓ Server starting on %s", serverURL)
+    if lanIP != "" {
+        log.Printf("✓ LAN access: http://%s:%s", lanIP, ServerPort)
+    }
+    log.Printf("✓ Access PIN: %s", auth.GetPIN())
     log.Println("========================================")
     log.Println("\n🎉 MS Store Billing is ready!")
     log.Println("\nOpening browser automatically...")
     log.Println("If browser doesn't open, visit:", serverURL)
+    if lanIP != "" {
+        log.Println("\n📱 Access from phone/tablet on same WiFi:")
+        log.Printf("   http://%s:%s", lanIP, ServerPort)
+    }
     log.Println("\nPress Ctrl+C to stop the server")
     log.Println("========================================")
 
@@ -106,20 +122,27 @@ func main() {
 
 // setupRoutes configures all HTTP routes
 func setupRoutes() {
-    // API routes
-    http.HandleFunc("/api/products", handlers.ProductsHandler)
-    http.HandleFunc("/api/products/", handlers.ProductsHandler)
-    http.HandleFunc("/api/bills", handlers.BillsHandler)
-    http.HandleFunc("/api/bills/", handlers.BillsHandler)
-    http.HandleFunc("/api/bills/history", handlers.BillHistoryHandler)  
-    http.HandleFunc("/api/bills/search", handlers.BillSearchHandler)
-    http.HandleFunc("/api/stats", handlers.StatsHandler)
+    // Auth routes (no authentication required)
+    http.HandleFunc("/api/login", auth.HandleLogin)
+    http.HandleFunc("/api/logout", auth.HandleLogout)
+    http.HandleFunc("/api/session", auth.HandleCheckSession)
+
+    // Protected API routes (authentication required)
+    http.HandleFunc("/api/products", auth.Middleware(handlers.ProductsHandler))
+    http.HandleFunc("/api/products/", auth.Middleware(handlers.ProductsHandler))
+    http.HandleFunc("/api/bills", auth.Middleware(handlers.BillsHandler))
+    http.HandleFunc("/api/bills/", auth.Middleware(handlers.BillsHandler))
+    http.HandleFunc("/api/bills/history", auth.Middleware(handlers.BillHistoryHandler))
+    http.HandleFunc("/api/bills/search", auth.Middleware(handlers.BillSearchHandler))
+    http.HandleFunc("/api/stats", auth.Middleware(handlers.StatsHandler))
+    http.HandleFunc("/api/print", auth.Middleware(handlers.PrintHandler))
+    http.HandleFunc("/api/printers", auth.Middleware(handlers.PrintersHandler))
+    http.HandleFunc("/api/preview/", auth.Middleware(handlers.PreviewHandler))
+    http.HandleFunc("/api/shutdown", auth.Middleware(shutdownHandler))
+    http.HandleFunc("/api/debug/db-path", auth.Middleware(dbPathHandler))
+
+    // Health check (no auth - for monitoring)
     http.HandleFunc("/api/health", healthHandler)
-    http.HandleFunc("/api/print", handlers.PrintHandler)
-    http.HandleFunc("/api/printers", handlers.PrintersHandler)
-    http.HandleFunc("/api/preview/", handlers.PreviewHandler)
-    http.HandleFunc("/api/shutdown", shutdownHandler)
-    http.HandleFunc("/api/debug/db-path", dbPathHandler)
 
     // Serve embedded React frontend
     buildFS, err := fs.Sub(frontendFS, "build")
@@ -213,6 +236,22 @@ func healthHandler(w http.ResponseWriter, r *http.Request) {
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     w.Write([]byte(`{"status":"ok","service":"ms-store-billing","version":"1.0.0"}`))
+}
+
+// getLANIP returns the primary LAN IP address for multi-device access
+func getLANIP() string {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return ""
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok {
+			if ipnet.IP.To4() != nil && !ipnet.IP.IsLoopback() {
+				return ipnet.IP.String()
+			}
+		}
+	}
+	return ""
 }
 
 // openBrowser opens the default browser with the given URL
