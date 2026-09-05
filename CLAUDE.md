@@ -2,6 +2,28 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Current Status (as of 2026-09-05)
+
+**Phases 1-6: Completed.** The app is stable and tested.
+
+**Last 3 commits:**
+- `cdfbbcc` — Update roadmap: Phase 5 end-to-end testing completed
+- `50150ba` — Add 401 session expiry handling in API client
+- `1486840` — Add PIN-based authentication with multi-session support
+
+**What works:**
+- PIN authentication (default: `1234`) with 7-day sessions
+- Multi-device access (LAN + Tailscale remote)
+- Full billing workflow (products, cart, bills, history)
+- Thermal receipt printing (ESC/POS)
+- Session expiry gracefully redirects to login
+
+**Next steps (optional):**
+- Phase 7: Logout button in UI, login rate limiting, persistent sessions
+- Phase 8: GitHub Actions CI/CD
+
+---
+
 ## Project Roadmap and Current Progress
 
 When continuing this project, always inspect this section first. Continue from the next pending phase. Do not create a separate phase structure, start optional improvements, or go sideways into unrelated enhancements unless explicitly requested by the user.
