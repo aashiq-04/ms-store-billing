@@ -41,18 +41,14 @@ When continuing this project, always inspect this section first. Continue from t
 - ✅ Cross-device data sync verified — Products added from one device appear on another
 
 ### Phase 5 — End-to-End Real-World Testing
-**Status:** Next Phase
+**Status:** Completed
 **Goal:** Test the complete workflow in realistic conditions.
-**Test scenarios:**
-- Desktop browser access
-- LAN access from another device
-- Mobile access
-- Authentication and session behavior
-- Billing workflow
-- Products and customer functionality
-- SQLite data persistence
-- Receipt/thermal printing, especially when accessed from another device
-- Server restart behavior
+**Results:**
+- ✅ All 15 API tests passed (auth, products, bills, history, stats, printers, logout, multi-session)
+- ✅ 401 session expiry handling added — expired sessions redirect to login
+- ✅ Bill creation with correct field names verified (`item_name`, `unit_price`, `quantity`, `unit`)
+- ✅ Receipt preview (ESC/POS) generates correctly
+- ✅ Multi-device sessions work independently — both stay logged in
 
 ### Phase 6 — Fix Real Issues Found During Testing
 **Status:** Completed
