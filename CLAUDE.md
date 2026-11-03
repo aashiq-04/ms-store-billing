@@ -2,26 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current Status (as of 2026-09-05)
+## Current Status (as of 2026-11-03)
 
 **Phases 1-8: Completed.** The app is stable, tested, and optimized for mobile.
 
 **Last 3 commits:**
+- `008ad31` — Claude Code & UIUX Updates
+- `960cf5e` — Update roadmap: Phase 8 mobile UI/UX optimization completed
 - `98a9650` — Mobile UI/UX optimization for billing screen
-- `8dc67dd` — Add logout button to billing screen header
-- `3ecac83` — Update roadmap: Phase 7 completed
 
 **What works:**
 - PIN authentication (default: `1234`) with 7-day sessions
 - Multi-device access (LAN + Tailscale remote)
 - Full billing workflow (products, cart, bills, history)
-- Thermal receipt printing (ESC/POS)
+- Thermal receipt printing (ESC/POS) — backend generates receipts, frontend shows preview
 - Session expiry gracefully redirects to login
 - Logout button in UI header
 - Mobile-optimized cart with touch-friendly controls
 
-**Next steps (optional):**
-- Phase 9: GitHub Actions CI/CD
+**Immediate priority:** Make the app production-ready for daily shop use:
+1. Purchase and integrate a 58mm USB thermal printer
+2. Production-readiness testing in the actual shop
+
+**Next steps (after production use is stable):**
+- GST implementation (Phases 11–16, pending auditor approval of GST mappings)
 
 ---
 
@@ -118,9 +122,81 @@ When continuing this project, always inspect this section first. Continue from t
 - Quick-add for frequently used products
 - Further optimizations based on actual usage feedback
 
-### Phase 9 — CI/CD
+### Phase 9 — Thermal Printer Integration
+**Status:** Pending — awaiting printer purchase
+**Goal:** Purchase a 58mm USB ESC/POS thermal printer and integrate it for production receipt printing.
+**Pre-purchase analysis completed (2026-11-03):**
+- ✅ Backend ESC/POS receipt generation exists (`internal/printer/escpos.go`)
+- ✅ Windows print pipeline exists (`internal/printer/windows.go`) — sends raw data via `\\localhost\PRINTER_NAME`
+- ✅ API endpoints exist: `POST /api/print`, `GET /api/printers`, `GET /api/preview/:id`
+- ✅ Mobile→server→printer flow is architecturally supported
+
+**Known issues to fix after purchase:**
+- `receiptWidth` is 48 (80mm format) — must change to 32 for 58mm printer
+- Column widths in `GenerateReceipt()` need recalculation for 32-char width
+- Frontend `PrintPreview` already uses 32-char width (correct for 58mm)
+- `BillingScreen.jsx` has `// TODO: Trigger print` — print button not wired to `printerAPI.print()`
+- Tamil text rendering depends on printer firmware Unicode support — test after purchase
+- Printer must be shared in Windows (`\\localhost\name` requires sharing enabled)
+
+**Printer purchase requirements:**
+- 58mm paper, USB interface, ESC/POS compatible, Windows 10/11 driver
+- Auto-cutter recommended, UTF-8/multilingual support strongly recommended for Tamil text
+
+### Phase 10 — Production-Readiness Testing
+**Status:** Pending (blocked by Phase 9)
+**Goal:** Test the complete billing workflow in the actual shop with the real printer.
+**Scope:**
+- End-to-end bill creation and printing from both PC and mobile
+- Receipt formatting verification on actual paper
+- Tamil text printing validation
+- Daily usage workflow validation
+- Performance under real-world conditions
+- Any bug fixes discovered during shop testing
+
+### Phase 11 — GST Product Master
+**Status:** Future (pending after Phases 9-10 are complete)
+**Goal:** Add GST classification fields to product database.
+**Business context:**
+- Regular GST registration
+- Existing customer-facing selling prices are retained (GST-inclusive pricing)
+- GST calculated from GST-inclusive MRP using back-calculation
+- Product-wise GST classification must be verified by auditor before going live
+- Do NOT invent HSN codes or GST rates — auditor provides initial mappings
+
+### Phase 12 — GST Billing Engine
 **Status:** Future
-**Goal:** Add automated builds via GitHub Actions workflow after the application is stable.
+**Goal:** Implement GST calculation logic in bill creation.
+**Key requirements:**
+- Back-calculate GST from inclusive prices (e.g., for 5% GST: tax = price × 5/105)
+- Support multiple GST rate slabs (0%, 5%, 12%, 18%, 28%)
+- CGST/SGST split for intra-state (Tamil Nadu) sales
+- Exempt and nil-rated item handling
+
+### Phase 13 — GST Invoices and Receipts
+**Status:** Future
+**Goal:** Update receipt format to show GST details as required by law.
+**Requirements:**
+- GSTIN on receipt header
+- HSN code per line item
+- Tax breakup (CGST + SGST) per item or as summary
+- Sequential GST invoice numbering
+
+### Phase 14 — GST Reports
+**Status:** Future
+**Goal:** Generate GST return data (GSTR-1, GSTR-3B summaries).
+**Scope:**
+- Monthly/quarterly tax summary reports
+- HSN-wise summary
+- Export-friendly format for filing
+
+### Phase 15 — Purchase and ITC Management
+**Status:** Future
+**Goal:** Track purchases and input tax credit for GST compliance.
+
+### Phase 16 — CI/CD
+**Status:** Future
+**Goal:** Add automated builds via GitHub Actions workflow.
 
 ---
 
